@@ -18,7 +18,7 @@ https://github.com/jontubs/EasyBMS
  *
  * @param pCS Pin used as chip select
  */
-LTC68041::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(2) {
+LTC68041::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(HSPI) {
     Serial.print("Objekt angelegt");
 
     regs.CFGR0w = 0xFE;
@@ -37,7 +37,7 @@ void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinCLK, OUTPUT);
     pinMode(pinCS, OUTPUT);
 
-    SPI_local.begin();
+    SPI_local.begin(pinCLK, pinMISO, pinMOSI, pinCS);
     // SPI.begin();
 }
 
