@@ -1,6 +1,7 @@
 #include "ltc_meb_wrapper.hpp"
 
-#include <LTC68041.cpp>  // used for template functions
+// #include <LTC68041.cpp>  // used for template functions
+#include <LTC68041.h>
 
 #include "debug.hpp"
 
@@ -11,7 +12,7 @@ LtcMebWrapper::LtcMebWrapper() {
 }
 
 void LtcMebWrapper::init() {
-    _ltc.initSPI(2, 7, 6); // MOSI, MISO, SCLK
+    _ltc.initSPI(2, 7, 15); // MOSI, MISO, SCLK
 }
 
 float LtcMebWrapper::raw_voltage_to_real_module_temp(float raw_voltage) {
@@ -81,8 +82,12 @@ std::array<float, 12> LtcMebWrapper::cell_voltages() {
     bool success = _ltc.getCellVoltages<12>(voltages);
     if (success) {
         _measure_error = false;
+        // voltages[0] += 0.004f;
     } else {
         _measure_error = true;
+        // for (auto& voltage : voltages) {
+        //     voltage = -1.f;
+        // }
     }
 
     return voltages;
