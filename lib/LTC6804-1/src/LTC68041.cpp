@@ -52,7 +52,7 @@ void LTC68041::destroySPI() {
  * @brief Wake isoSPI up from idle state
  *        Generic wakeup commannd to wake isoSPI up out of idle
  */
-void LTC68041::wakeup_idle(){
+void LTC68041::wakeup_idle() const {
     digitalWrite(pinCS, LOW);
     delayMicroseconds(2);  // Guarantees the isoSPI will be in ready mode
     digitalWrite(pinCS, HIGH);
@@ -61,7 +61,7 @@ void LTC68041::wakeup_idle(){
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data){
+constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const {
     std::uint16_t remainder = 16, addr = 0;  // initialize the PEC
 
     addr = ((remainder >> 7) ^ (data >> 8)) & 0xff;  // calculate PEC table address
@@ -71,6 +71,50 @@ constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data){
     remainder = (remainder << 8) ^ crc15Table[addr];
 
     return (remainder * 2);  // The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
+}
+
+/*!******************************************************************************************************
+Calculates the CRC sum of some data bytes given by the array "data"
+*********************************************************************************************************/
+template <std::size_t N>
+constexpr std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const {
+    std::uint16_t remainder = 16, addr = 0;  // initialize the PEC
+
+    for (const auto &element : data)  // loops for each byte in data array
+    {
+        addr = ((remainder >> 7) ^ element) & 0xff;  // calculate PEC table address
+        remainder = (remainder << 8) ^ crc15Table[addr];
+    }
+
+    return (remainder * 2);  // The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
+}
+
+/*!******************************************************************************************************
+Writes and read a set number of bytes using the SPI port.
+Tested and runs fine
+[in] std::array<std::uint8_t, N1> &tx_Data array of data to be written on the SPI port
+[out] std::array<std::uint8_t, N2> &rx_data array that read data will be written too.
+*********************************************************************************************************/
+template <std::size_t N>
+bool LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data) {
+    std::uint16_t pec = calcPEC15(cmd);
+
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    digitalWrite(pinCS, LOW);
+
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(pec);
+
+    for (auto &element : rx_data) {
+        element = SPI_local.transfer(1);
+    }
+
+    pec = SPI_local.transfer16(1);
+
+    digitalWrite(pinCS, HIGH);
+    SPI_local.endTransaction();
+
+    return (pec == calcPEC15(rx_data));
 }
 
 /*!******************************************************************************************************
@@ -102,7 +146,7 @@ void LTC68041::cfgSetVUV(const float Undervoltage) {
     regs.CFGR[CFGR2] = (regs.CFGR[CFGR2] & (~CFG2_VUV_MSK)) | ((VUV >> 8) & CFG2_VUV_MSK);
 }
 
-float LTC68041::cfgGetVUV(){
+float LTC68041::cfgGetVUV() const {
     unsigned int value;
 
     value = regs.CFGR[CFGR1] | (static_cast<unsigned int>(regs.CFGR[CFGR2] & CFG2_VUV_MSK) << 8);
@@ -123,7 +167,7 @@ void LTC68041::cfgSetVOV(const float Overvoltage) {
     regs.CFGR[CFGR3] = (VOV >> 4) & CFG3_VOV_MSK;
 }
 
-float LTC68041::cfgGetVOV(){
+float LTC68041::cfgGetVOV() const {
     unsigned int value;
 
     value = ((regs.CFGR[CFGR2] & CFG2_VOV_MSK) >> 4) | (static_cast<unsigned int>(regs.CFGR[CFGR3]) << 4);
@@ -142,7 +186,7 @@ void LTC68041::cfgSetDCC(std::bitset<12> dcc) {
     regs.CFGR[CFGR5] = (regs.CFGR[CFGR5] & (~CFG5_DCC_MSK)) | ((dcc.to_ulong() >> 8) & CFG5_DCC_MSK);
 }
 
-std::bitset<12> LTC68041::cfgGetDCC(){
+std::bitset<12> LTC68041::cfgGetDCC() const {
     return std::bitset<12>{regs.CFGR[CFGR4] | (static_cast<unsigned long long>(regs.CFGR[CFGR5] & CFG5_DCC_MSK) << 8)};
 }
 
@@ -195,7 +239,7 @@ bool LTC68041::cfgGetRefOn() {
     return (regs.CFGR0r & CFG0_REFON_MSK);
 }
 
-bool LTC68041::cfgGetSWTENPin(){
+bool LTC68041::cfgGetSWTENPin() const {
     return (regs.CFGR0r & CFG0_SWTRD_MSK);
 }
 
@@ -324,6 +368,73 @@ void LTC68041::clrAuxRegs() {
     wakeup_idle();  // This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
     // 4
     spi_write_cmd(CLRAUX);
+}
+
+/*!*******************************************************************************************************
+Reads and parses the LTC6804 cell voltage registers.
+
+ The function is used to read the cell codes of the LTC6804.
+ This function will send the requested read commands parse the data
+ and store the cell voltages in cell_codes variable.
+
+  1. Read every single cell voltage register
+  2. Parse raw cell voltage data in cell_codes array
+  3. Check the PEC of the data read back vs the calculated PEC for each read register command
+  4. Return pec_error flag
+*********************************************************************************************************/
+template <std::size_t N>
+bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel ch) {
+    std::array<float, CELLNUM> cellVoltage{};  // Cell voltage on volt
+
+    switch (ch) {
+        case CellChannel::CH_ALL:
+        case CellChannel::CH_CELL_1_AND_7:
+        case CellChannel::CH_CELL_2_AND_8:
+        case CellChannel::CH_CELL_3_AND_9:
+            if (!spi_read_cmd(RDCVA, regs.CVAR)) return false;
+
+            if (!spi_read_cmd(RDCVC, regs.CVCR)) return false;
+
+            parseVoltages(0, regs.CVAR, cellVoltage);
+            parseVoltages(2, regs.CVCR, cellVoltage);
+
+            if (ch != CellChannel::CH_ALL) break;
+        case CellChannel::CH_CELL_4_AND_10:
+        case CellChannel::CH_CELL_5_AND_11:
+        case CellChannel::CH_CELL_6_AND_12:
+            if (!spi_read_cmd(RDCVB, regs.CVBR)) return false;
+
+            if (!spi_read_cmd(RDCVD, regs.CVDR)) return false;
+
+            parseVoltages(1, regs.CVBR, cellVoltage);
+            parseVoltages(3, regs.CVDR, cellVoltage);
+            break;
+
+        default:
+            return false;
+    }
+
+    for (unsigned int i = 0; i < voltages.size(); i++) {
+        voltages[i] = cellVoltage[i];
+    }
+
+    return true;
+}
+
+/**
+ * @brief Helper function to calculate voltages in volt from register values
+ *
+ * @param group Register group to convert
+ * @param regs Data of register group as array
+ * @param data Array for target values
+ */
+template <std::size_t N>
+constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data) {
+    unsigned int index = (group)*3;
+
+    for (unsigned int i = 0; i < (regGroup.size() - 1); i += 2) {
+        data[index++] = parseVoltage(regGroup, static_cast<RegNames>(i));
+    }
 }
 
 constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index) {
@@ -840,4 +951,17 @@ inline void serialPrint(bool data) {
 
 inline void serialPrint(float data) {
     Serial.print(data);
+}
+
+template <typename T, std::size_t N>
+void printArray(std::array<T, N> &arr) {
+    Serial.println();
+    Serial.print("Array Content | ");
+
+    for (const auto &element : arr) {
+        serialPrint(element);
+        Serial.print("\t");
+    }
+
+    Serial.print(" |END \n");
 }

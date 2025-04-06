@@ -22,7 +22,7 @@ class LtcMebWrapper : public BatteryInterface {
 
    private:
     LTC68041 _ltc = LTC68041(18); // CSLTC
-    uint32_t _pec15_error_count;
+    uint32_t _pec15_error_count{};
     bool _debug_mode;
     bool _balance_error;
     bool _measure_error;
