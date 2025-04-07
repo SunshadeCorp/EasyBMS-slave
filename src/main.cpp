@@ -28,9 +28,9 @@ std::shared_ptr<BatteryInterface> battery_interface;
     digitalWrite(LED_BUILTIN, false);
 
     DEBUG_BEGIN(74880);
-    // while (!Serial)
-    // ;
-    // delay(1000);
+    while (!Serial)
+    ;
+    delay(2000);
     DEBUG_PRINTLN("init");
 
     // auto battery_interface = std::make_shared<SimulatedBattery>();
