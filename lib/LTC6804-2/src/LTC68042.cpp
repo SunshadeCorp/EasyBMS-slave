@@ -31,7 +31,7 @@ LTC68042::LTC68042(byte pCS, float tempOffset) : offsetTemp(tempOffset), am(AM_B
  * @param pCS Pin used as chip select
  */
 LTC68042::LTC68042(std::uint16_t addr, byte pCS, float tempOffset)
-    : offsetTemp(tempOffset), am(AM_ADDRESSED), address(addr << ADDRPos), md(MD_NORMAL), pinCS(pCS), regs({}) {
+    : offsetTemp(tempOffset), am(AM_ADDRESSED), address(addr << ADDRPos), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(FSPI) {
     regs.CFGR0w = 0xFE;
 }
 
@@ -48,7 +48,7 @@ void LTC68042::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinCLK, OUTPUT);
     pinMode(pinCS, OUTPUT);
 
-    SPI.begin();
+    SPI_local.begin(pinCLK, pinMISO, pinMOSI, -1);
 }
 
 /**
@@ -56,7 +56,7 @@ void LTC68042::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
  *
  */
 void LTC68042::destroySPI() {
-    SPI.end();
+    SPI_local.end();
 }
 
 /**
@@ -110,20 +110,20 @@ template <std::size_t N>
 bool LTC68042::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data) {
     std::uint16_t pec = calcPEC15(cmd);
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(pec);
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(pec);
 
     for (auto &element : rx_data) {
-        element = SPI.transfer(1);
+        element = SPI_local.transfer(1);
     }
 
-    pec = SPI.transfer16(1);
+    pec = SPI_local.transfer16(1);
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
 
     return (pec == calcPEC15(rx_data));
 }
@@ -135,14 +135,14 @@ std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
 void LTC68042::spi_write_cmd(const std::uint16_t cmd) const {
     std::uint16_t pec = calcPEC15(cmd);
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(pec);
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(pec);
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
 }
 
 /*!******************************************************************************************************
@@ -270,22 +270,22 @@ void LTC68042::cfgWrite()  // A two dimensional array of the configuration data 
     cmd |= am;
     cmd |= address;
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(calcPEC15(cmd));
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(calcPEC15(cmd));
 
     regs.CFGR[CFGR0] = regs.CFGR0w;
 
     for (const auto &element : regs.CFGR) {
-        SPI.transfer(element);
+        SPI_local.transfer(element);
     }
 
-    SPI.transfer16(calcPEC15(regs.CFGR));
+    SPI_local.transfer16(calcPEC15(regs.CFGR));
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
     /*
         //2
         cmd_index = 4;
