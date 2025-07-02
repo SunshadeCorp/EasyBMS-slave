@@ -1,8 +1,9 @@
 #include "wifi.hpp"
 
 #include <Arduino.h>
-#include <WiFi.h>
 #include <HTTPUpdate.h>
+#include <WiFi.h>
+#include <esp_mac.h>
 #include <lwip/dns.h>
 
 #include "debug.hpp"
@@ -38,10 +39,10 @@ void connect_wifi(String hostname, String ssid, String password) {
 
 String mac_string() {
     uint8_t mac[6];
-    WiFi.macAddress(mac);
-    char mac_string[6 * 2 + 1] = {0};
-    snprintf(mac_string, 6 * 2 + 1, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    return String(mac_string);
+    esp_base_mac_addr_get(mac);
+    char mac_string[6 * 2 + 1] = {};
+    snprintf(mac_string, sizeof(mac_string), "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return {mac_string};
 }
 
 String perform_ota_update(String url, const char* cert) {
