@@ -16,6 +16,7 @@ https://github.com/jontubs/EasyBMS
 #include <array>
 #include <bitset>
 
+template <std::size_t Nodes = 1>
 class LTC68041 {
    private:
     static constexpr int DCTOPos = 4;
@@ -227,14 +228,21 @@ class LTC68041 {
     void readAuxDbg();
     void readCellsDbg();
 
-    template <std::size_t N>
-    bool getCellVoltages(std::array<float, N> &voltages, const CellChannel ch = CH_ALL);
+    template <std::size_t N, unsigned int M = 0>
+    bool getCellVoltages(std::array<float, N> &voltages);
+    template <unsigned int N = 0>
     float getAuxVoltage(const AuxChannel chg);
+    template <unsigned int N = 0>
     float getStatusVoltage(const StatusGroup chst);
+    template <unsigned int N = 0>
     bool getStatusMUXFail();
+    template <unsigned int N = 0>
     bool getStatusThermalShutdown();
+    template <unsigned int N = 0>
     std::bitset<12> getStatusOverVoltageFlags();
+    template <unsigned int N = 0>
     std::bitset<12> getStatusUnderVoltageFlags();
+    template <unsigned int N = 0>
     int getStatusRevision();
 
     float cellComputeSOC(float voc);
@@ -308,79 +316,135 @@ class LTC68041 {
     };
 
     /**
+     * @brief Register group names with index to check cache validity
+     * 
+     */
+
+     enum RegGroups {
+        CFGR = 0,
+        CVAR,
+        CVBR,
+        CVCR,
+        CVDR,
+        AVAR,
+        AVBR,
+        STAR,
+        STBR,
+        COMM
+     }
+
+    /**
+     * @brief Value names for parsing measurement values from read only registers
+     *        with corresponding index in group array in lower nibble
+     */
+    enum ValueNames {
+        // Cell voltage register group A
+        C1V = 0x00,
+        C2V = 0x02,
+        C3V = 0x04,
+        // Cell voltage register group B
+        C4V = 0x10,
+        C5V = 0x12,
+        C6V = 0x14,
+        // Cell voltage register group C
+        C7V = 0x20,
+        C8V = 0x22,
+        C9V = 0x24,
+        // Cell voltage register group D
+        C10V = 0x30,
+        C11V = 0x32,
+        C12V = 0x34,
+        // Auxiliary register group A
+        G1V = 0x40,
+        G2V = 0x42;
+        G3V = 0x44,
+        // Auxiliary register group B
+        G4V = 0x50,
+        G5V = 0x52,
+        REF = 0x54,
+        // Status register group A
+        SC = 0x60,
+        ITMP = 0x62,
+        VA = 0x64,
+        // Status register group B
+        VD = 0x70
+    }
+
+    /**
      * @brief Register names in the different register groups with corresponding
-     *        index in group array
+     *        index in group array in lower nibble
      */
     enum RegNames {
-        CFGR0 = 0,
-        CFGR1 = 1,
-        CFGR2 = 2,
-        CFGR3 = 3,
-        CFGR4 = 4,
-        CFGR5 = 5,
-
-        CVAR0 = 0,
-        CVAR1 = 1,
-        CVAR2 = 2,
-        CVAR3 = 3,
-        CVAR4 = 4,
-        CVAR5 = 5,
-
-        CVBR0 = 0,
-        CVBR1 = 1,
-        CVBR2 = 2,
-        CVBR3 = 3,
-        CVBR4 = 4,
-        CVBR5 = 5,
-
-        CVCR0 = 0,
-        CVCR1 = 1,
-        CVCR2 = 2,
-        CVCR3 = 3,
-        CVCR4 = 4,
-        CVCR5 = 5,
-
-        CVDR0 = 0,
-        CVDR1 = 1,
-        CVDR2 = 2,
-        CVDR3 = 3,
-        CVDR4 = 4,
-        CVDR5 = 5,
-
-        AVAR0 = 0,
-        AVAR1 = 1,
-        AVAR2 = 2,
-        AVAR3 = 3,
-        AVAR4 = 4,
-        AVAR5 = 5,
-
-        AVBR0 = 0,
-        AVBR1 = 1,
-        AVBR2 = 2,
-        AVBR3 = 3,
-        AVBR4 = 4,
-        AVBR5 = 5,
-
-        STAR0 = 0,
-        STAR1 = 1,
-        STAR2 = 2,
-        STAR3 = 3,
-        STAR4 = 4,
-        STAR5 = 5,
-
-        STBR0 = 0,
-        STBR1 = 1,
-        STBR2 = 2,
-        STBR3 = 3,
-        STBR4 = 4,
-        STBR5 = 5,
-
-        COMM0 = 0,
-        COMM1 = 1,
-        COMM2 = 2,
-        COMM3 = 3,
-        COMM4 = 4,
-        COMM5 = 5,
+        // Configuration Register Group
+        CFGR0 = 0x00,
+        CFGR1 = 0x01,
+        CFGR2 = 0x02,
+        CFGR3 = 0x03,
+        CFGR4 = 0x04,
+        CFGR5 = 0x05,
+        // Cell voltage register group A
+        CVAR0 = 0x10,
+        CVAR1 = 0x11,
+        CVAR2 = 0x12,
+        CVAR3 = 0x13,
+        CVAR4 = 0x14,
+        CVAR5 = 0x15,
+        // Cell voltage register group B
+        CVBR0 = 0x20,
+        CVBR1 = 0x21,
+        CVBR2 = 0x22,
+        CVBR3 = 0x23,
+        CVBR4 = 0x24,
+        CVBR5 = 0x25,
+        // Cell voltage register group C
+        CVCR0 = 0x30,
+        CVCR1 = 0x31,
+        CVCR2 = 0x32,
+        CVCR3 = 0x33,
+        CVCR4 = 0x34,
+        CVCR5 = 0x35,
+        // Cell voltage register group D
+        CVDR0 = 0x40,
+        CVDR1 = 0x41,
+        CVDR2 = 0x42,
+        CVDR3 = 0x43,
+        CVDR4 = 0x44,
+        CVDR5 = 0x45,
+        // Auxiliary register group A
+        AVAR0 = 0x50,
+        AVAR1 = 0x51,
+        AVAR2 = 0x52,
+        AVAR3 = 0x53,
+        AVAR4 = 0x54,
+        AVAR5 = 0x55,
+        // Auxiliary register group B
+        AVBR0 = 0x60,
+        AVBR1 = 0x61,
+        AVBR2 = 0x62,
+        AVBR3 = 0x63,
+        AVBR4 = 0x64,
+        AVBR5 = 0x65,
+        // Status register group A
+        STAR0 = 0x70,
+        STAR1 = 0x71,
+        STAR2 = 0x72,
+        STAR3 = 0x73,
+        STAR4 = 0x74,
+        STAR5 = 0x75,
+        // Status register group B
+        STBR0 = 0x80,
+        STBR1 = 0x81,
+        STBR2 = 0x82,
+        STBR3 = 0x83,
+        STBR4 = 0x84,
+        STBR5 = 0x85,
+        // COMM register group
+        COMM0 = 0x90,
+        COMM1 = 0x91,
+        COMM2 = 0x92,
+        COMM3 = 0x93,
+        COMM4 = 0x94,
+        COMM5 = 0x95,
     };
 
     /**
@@ -457,7 +521,8 @@ class LTC68041 {
     SPIClass SPI_local;
     ADCMode md;
     byte pinCS;  // ChipSelectPin
-    Registers regs;
+    std::array<Registers, Nodes> regs;
+    std::bitset<10> isCacheInvalid;
 
     static constexpr uint16_t crc15Table[256] = {
         0x0000, 0xc599, 0xceab, 0x0b32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!< precomputed CRC15 Table
@@ -475,18 +540,15 @@ class LTC68041 {
         0xd089, 0x1510, 0x1e22, 0xdbbb, 0x0af8, 0xcf61, 0xc453, 0x01ca, 0xd237, 0x17ae, 0x1c9c, 0xd905, 0xfeff, 0x3b66, 0x3054, 0xf5cd, 0x2630, 0xe3a9, 0xe89b,
         0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368, 0x96f1, 0x9dc3, 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095};
 
-    template <std::size_t N>
-    constexpr void parseVoltages(const unsigned int group, const std::array<uint8_t, SIZEREG> &regGroup, std::array<float, N> &data);
-
-    static constexpr float parseVoltage(const std::array<uint8_t, SIZEREG> &regGroup, RegNames index);
+    template <unsigned int N = 0>
+    float parseVoltage(ValueNames index);
 
     constexpr uint16_t calcPEC15(const uint16_t data) const;
 
     template <std::size_t N>
     constexpr uint16_t calcPEC15(const std::array<uint8_t, N> &data) const;
 
-    template <std::size_t N>
-    bool spi_read_cmd(const uint16_t cmd, std::array<uint8_t, N> &rx_data);
+    bool spi_read_cmd(Commands cmd);
 
     void spi_write_cmd(const uint16_t cmd);
 };
