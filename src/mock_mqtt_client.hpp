@@ -13,7 +13,7 @@ using MqttCallback = std::function<void(const String&, const String&)>;
 class MockMqttClient : public IMqttClient {
    public:
     MockMqttClient();
-    bool publish(String topic, const char* value) override;
+    bool publish(const String &topic, const char* value) override;
     bool subscribe(String topic, MqttCallback callback) override;
     void disconnect() override;
     bool connected() override;

@@ -2,6 +2,18 @@
 
 #include "debug.hpp"
 
+BMS::BMS() :
+    _last_blink_time{0},
+    _module_number{0},
+    _mode(BalanceMode::none),
+    _balancer{},
+    _battery_monitor{},
+    _display{},
+    _led_builtin_state{false},
+    _last_ltc_check{0}
+{
+}
+
 void BMS::blink() {
     _last_blink_time = millis();
 }
@@ -32,19 +44,15 @@ BalanceMode BMS::mode() const {
     return _mode;
 }
 
-void BMS::set_balancer(std::shared_ptr<IBalancer> balancer) {
+void BMS::set_balancer(const std::shared_ptr<IBalancer> &balancer) {
     _balancer = balancer;
 }
 
-void BMS::set_display(std::shared_ptr<Display> display) {
-    _display = display;
+ void BMS::set_display(const std::shared_ptr<Display> &display) {
+     _display = display;
 }
 
-void BMS::set_mqtt_adapter(std::shared_ptr<MqttAdapter> mqtt_adapter) {
-    _mqtt_adapter = mqtt_adapter;
-}
-
-void BMS::set_battery_monitor(std::shared_ptr<BatteryMonitor> battery_monitor) {
+void BMS::set_battery_monitor(const std::shared_ptr<BatteryMonitor> &battery_monitor) {
     _battery_monitor = battery_monitor;
 }
 
@@ -56,18 +64,14 @@ void BMS::loop() {
     if (millis() - _last_ltc_check > LTC_CHECK_INTERVAL) {
         _last_ltc_check = millis();
         _battery_monitor->measure();
+        _battery_monitor->calc_cell_voltages();
 
-        if (_balancer != nullptr) {
+        if (_balancer) {
             _balancer->balance(_battery_monitor->cell_voltages());
             _battery_monitor->set_balance_bits(_balancer->balance_bits());
         }
 
-        if (_mqtt_adapter != nullptr) {
-            _mqtt_adapter->reconnect();
-            _mqtt_adapter->update();
-        }
-
-        if (_display != nullptr) {
+        if (_display) {
             _display->update(_battery_monitor);
         }
     }

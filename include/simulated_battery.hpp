@@ -9,12 +9,13 @@ class SimulatedBattery : public BatteryInterface {
    public:
     SimulatedBattery();
     void init() override;
-    void set_balance_bits(const std::bitset<12>& balance_bits) override;
+    void set_balance_bits(const std::vector<bool>& balance_bits) override;
+    std::vector<bool> get_balance_bits() override;
     float module_temp_1() override;
     float module_temp_2() override;
     float chip_temp() override;
     float module_voltage() override;
-    std::array<float, 12> cell_voltages() override;
+    std::vector<float> cell_voltages() override;
     bool balance_error() override;
     bool measure_error() override;
 
@@ -25,11 +26,11 @@ class SimulatedBattery : public BatteryInterface {
     void scenario_random();
 
     void balance();
-    std::array<float, 12> wiggle(std::array<float, 12> voltages);
+    std::vector<float> wiggle(std::vector<float> voltages);
 
    private:
-    std::array<float, 12> _voltages;
-    std::bitset<12> _balance_bits;
+    std::vector<float> _voltages;
+    std::vector<bool> _balance_bits;
     bool _measure_error = false;
     bool _balance_error = false;
 };

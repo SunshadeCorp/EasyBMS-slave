@@ -40,7 +40,7 @@ void MockMqttClient::set_will(String topic, uint8_t qos, bool retain, String mes
     will_message = message;
 }
 
-bool MockMqttClient::publish(String topic, const char* value) {
+bool MockMqttClient::publish(const String &topic, const char* value) {
     DEBUG_PRINTLN("MQTT Mock: publish(): " + topic + " (" + value + ")");
     return publish_result;
 }

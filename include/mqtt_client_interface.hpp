@@ -8,7 +8,7 @@ using MqttCallback = std::function<void(const String&, const String&)>;
 
 class IMqttClient {
    public:
-    virtual bool publish(String topic, const char* value) = 0;
+    virtual bool publish(const String &topic, const char* value) = 0;
 
     virtual bool subscribe(String topic, MqttCallback callback) = 0;
     virtual void disconnect() = 0;
@@ -22,11 +22,11 @@ class IMqttClient {
     virtual String state_string() = 0;
 
     template <typename T>
-    bool publish(String topic, T value) {
+    bool publish(const String &topic, T value) {
         return publish(topic, String(value).c_str());
     }
 
-    bool publish(String topic, String value) {
+    bool publish(const String &topic, String value) {
         return publish(topic, value.c_str());
     }
 };

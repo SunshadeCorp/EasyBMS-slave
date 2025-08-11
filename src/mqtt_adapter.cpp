@@ -9,9 +9,19 @@
 #include "version.h"
 #include "wifi.hpp"
 
-MqttAdapter::MqttAdapter(std::shared_ptr<BMS> bms, std::shared_ptr<IMqttClient> mqtt) {
-    _bms = bms;
-    _mqtt = mqtt;
+MqttAdapter::MqttAdapter(const std::shared_ptr<BMS> &bms, const std::shared_ptr<IMqttClient> &mqtt) :
+    _bms(bms),
+    _mqtt(mqtt),
+    _last_connection{0},
+    _hostname(),
+    _mac_topic(),
+    _module_topic(),
+    _last_master_uptime{0},
+    _balance_start_time{},
+    _balance_duration{},
+    _ota_cert{nullptr},
+    _ota_server()
+{
 }
 
 bool MqttAdapter::is_uint(const String& number_string) const {
@@ -40,7 +50,7 @@ void MqttAdapter::init() {
     _mqtt->set_will(_module_topic + "/available", 0, true, "offline");
 }
 
-#define callback(f) static_cast<MqttCallback>([this](String v1, String v2) { f(v1, v2); })
+#define callback(f) static_cast<MqttCallback>([this](const String &v1, const String &v2) { f(v1, v2); })
 
 void MqttAdapter::reconnect() {
     // Loop until we're reconnected
@@ -86,8 +96,12 @@ void MqttAdapter::loop() {
     if (!_mqtt->connected()) {
         reconnect();
     }
+
     _last_connection = millis();
     _mqtt->loop();
+
+    _bms->loop();
+    update();
 }
 
 void MqttAdapter::reset_balancing(size_t size) {
@@ -119,8 +133,10 @@ std::vector<bool> MqttAdapter::balance_bits() {
     return balance_bits;
 }
 
-void MqttAdapter::publish(String topic) {
+void MqttAdapter::publish(const String &topic) {
     auto m = _bms->battery_monitor();
+    auto balance_bits = m->balance_bits();
+
     _mqtt->publish(topic + "/uptime", millis());
     _mqtt->publish(topic + "/pec15_error_count", m->measure_error_count());
     _mqtt->publish(topic + "/battery_config", as_string(m->battery_config()));
@@ -134,7 +150,7 @@ void MqttAdapter::publish(String topic) {
         String cell_name = String(i + 1);
         if (cell_name != "undefined") {
             _mqtt->publish(topic + "/cell/" + cell_name + "/voltage", String(m->cell_voltages()[i], 3));
-            _mqtt->publish(topic + "/cell/" + cell_name + "/is_balancing", m->balance_bits()[i] ? "1" : "0");
+            _mqtt->publish(topic + "/cell/" + cell_name + "/is_balancing", balance_bits[i] ? "1" : "0");
         }
     }
 
@@ -147,7 +163,7 @@ void MqttAdapter::publish(String topic) {
 void MqttAdapter::update() {
     bool is_balancing = false;
 
-    const auto& balance_bits = _bms->battery_monitor()->balance_bits();
+    auto balance_bits = _bms->battery_monitor()->balance_bits();
     for (size_t i = 0; i < balance_bits.size(); i++) {
         if (balance_bits[i]) {
             is_balancing = true;
@@ -166,7 +182,7 @@ String MqttAdapter::module_topic() const {
     return _module_topic;
 }
 
-void MqttAdapter::on_mqtt_master_uptime(String topic_string, String payload_string) {
+void MqttAdapter::on_mqtt_master_uptime(const String &topic_string, const String &payload_string) {
     DEBUG_PRINT("Got heartbeat from master: ");
     DEBUG_PRINTLN(payload_string);
 
@@ -182,21 +198,21 @@ void MqttAdapter::on_mqtt_master_uptime(String topic_string, String payload_stri
     _last_master_uptime = uptime_u_long;
 }
 
-void MqttAdapter::on_mqtt_balance_request(String topic_string, String payload_string) {
+void MqttAdapter::on_mqtt_balance_request(const String &topic_string, const String &payload_string) {
     String cell_name = topic_string.substring((_module_topic + "/cell/").length());
     cell_name = cell_name.substring(0, cell_name.indexOf("/"));
     int cell_id = cell_id_from_name(cell_name);
     if (cell_id == -1 || static_cast<size_t>(cell_id) >= _balance_duration.size()) {
-        DEBUG_PRINTLN(String("MQTT: Got invalid cell name for balancing: ") + cell_name);
+        DEBUG_PRINTLN("MQTT: Got invalid cell name for balancing: " + cell_name);
         DEBUG_PRINTLN("_balance_duration.size(): " + String(_balance_duration.size()));
         DEBUG_PRINTLN("_balance_start_time.size(): " + String(_balance_start_time.size()));
         return;
     }
 
-    time_ms balance_time = std::stoul(payload_string.c_str());
+    time_ms balance_time = payload_string.toInt();
 
     if (balance_time > 1000 * 60 * 5) {
-        DEBUG_PRINTLN(String("MQTT: Balance time too long (> 5 mins): ") + balance_time + "ms");
+        DEBUG_PRINTLN("MQTT: Balance time too long (> 5 mins): " + String(balance_time) + "ms");
         return;
     }
 
@@ -204,17 +220,17 @@ void MqttAdapter::on_mqtt_balance_request(String topic_string, String payload_st
     _balance_duration[cell_id] = balance_time;
 }
 
-void MqttAdapter::on_mqtt_blink(String topic_string, String payload_string) {
+void MqttAdapter::on_mqtt_blink(const String &topic_string, const String &payload_string) {
     _bms->blink();
 }
 
-void MqttAdapter::on_mqtt_restart(String topic_string, String payload_string) {
+void MqttAdapter::on_mqtt_restart(const String &topic_string, const String &payload_string) {
     if (payload_string == "1") {
         _bms->restart();
     }
 }
 
-void MqttAdapter::on_mqtt_set_config(String topic_string, String payload_string) {
+void MqttAdapter::on_mqtt_set_config(const String &topic_string, const String &payload_string) {
     int indexOfComma = payload_string.indexOf(",");
     String module_number_string;
     if (indexOfComma >= 0) {
@@ -226,7 +242,7 @@ void MqttAdapter::on_mqtt_set_config(String topic_string, String payload_string)
     if (is_uint(module_number_string)) {
         uint8_t module_number = module_number_string.toInt();
         _bms->set_module_number(module_number);
-        _module_topic = String("esp-module/") + module_number_string;
+        _module_topic = "esp-module/" + module_number_string;
         _mqtt->disconnect();
         reconnect();
     }
@@ -240,9 +256,15 @@ void MqttAdapter::set_ota_cert(const char* cert) {
     _ota_cert = cert;
 }
 
-void MqttAdapter::on_mqtt_ota(String topic_string, String payload_string) {
-    _mqtt->publish(_mac_topic + "/ota_start", String("ota started [") + payload_string + "] (" + millis() + ")");
-    _mqtt->publish(_mac_topic + "/ota_url", String("https://") + _ota_server + payload_string);
+void MqttAdapter::on_mqtt_ota(const String &topic_string, const String &payload_string) {
+    if((_ota_cert == nullptr) || _ota_server.isEmpty()) {
+        _mqtt->publish(_mac_topic + "/ota_start", "ota error [no cert or server set]");
+        return;
+    } else {
+        _mqtt->publish(_mac_topic + "/ota_start", "ota started [" + payload_string + "] (" + String(millis()) + ")");
+    }
+    
+    _mqtt->publish(_mac_topic + "/ota_url", "https://" + _ota_server + payload_string);
     String ota_result = perform_ota_update(_ota_server + payload_string, _ota_cert);
     _mqtt->publish(_mac_topic + "/ota_ret", ota_result);
 }

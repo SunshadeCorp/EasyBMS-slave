@@ -2,17 +2,20 @@
 
 #include "debug.hpp"
 
-MqttClient::MqttClient(String server, uint16_t port) : _client(server.c_str(), port, _espClient) {
-    _id = "";
-    _user = "";
-    _password = "";
-    _will_topic = "";
-    _will_qos = 0;
-    _will_retain = true;
-    _will_message = "";
-    _use_will = false;
-    _server = server;
-    _port = port;
+MqttClient::MqttClient(String server, uint16_t port) :
+    _client(server.c_str(), port, _espClient),
+    _server(server),
+    _port{port},
+    _id(),
+    _user(),
+    _password(),
+    _will_topic(),
+    _will_qos{0},
+    _will_retain{true},
+    _will_message(),
+    _use_will{false},
+    _mqtt_callbacks{}
+{
     _client.setCallback([this](char* a, uint8_t* b, unsigned int c) { pub_sub_client_callback(a, b, c); });
 }
 
@@ -45,7 +48,7 @@ void MqttClient::set_will(String topic, uint8_t qos, bool retain, String message
     _use_will = true;
 }
 
-bool MqttClient::publish(String topic, const char* value) {
+bool MqttClient::publish(const String &topic, const char* value) {
     return _client.publish(topic.c_str(), value, true);
 }
 
@@ -93,9 +96,10 @@ void MqttClient::pub_sub_client_callback(char* topic, uint8_t* payload, unsigned
     String topic_string = String(topic);
     String payload_string = String();
     payload_string.concat((char*)payload, length);
+    auto it = _mqtt_callbacks.find(topic_string);
 
-    if (_mqtt_callbacks.find(topic_string) != _mqtt_callbacks.end()) {
-        _mqtt_callbacks[topic_string](topic_string, payload_string);
+    if (it != _mqtt_callbacks.end()) {
+        it->second(topic_string, payload_string);
     }
 }
 

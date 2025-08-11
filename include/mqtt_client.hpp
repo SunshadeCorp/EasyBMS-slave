@@ -13,7 +13,7 @@
 class MqttClient : public IMqttClient {
    public:
     MqttClient(String server, uint16_t port);
-    bool publish(String topic, const char* value) override;
+    bool publish(const String &topic, const char* value) override;
     bool subscribe(String topic, MqttCallback callback) override;
     void disconnect() override;
     bool connected() override;

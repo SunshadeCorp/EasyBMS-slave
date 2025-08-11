@@ -40,13 +40,16 @@ float SingleModeBalancer::min_voltage() const {
     return min;
 }
 
-SingleModeBalancer::SingleModeBalancer(long balance_time_ms, long relax_time_ms) {
-    _balance_time_ms = balance_time_ms;
-    _relax_time_ms = relax_time_ms;
-    _balance_start_timestamp = 0;
-    _relax_start_timestamp = 0;
-    _cut_off_voltage = 3.5;
-    _balancer_state = BalancerState::Idle;
+SingleModeBalancer::SingleModeBalancer(long balance_time_ms, long relax_time_ms) :
+    _balance_time_ms{balance_time_ms},
+    _relax_time_ms{relax_time_ms},
+    _balance_start_timestamp{0},
+    _relax_start_timestamp{0},
+    _cut_off_voltage{3.5},
+    _balancer_state(BalancerState::Idle),
+    _voltages{},
+    _balance_bits{}
+{
 }
 
 void SingleModeBalancer::SingleModeBalancer::balance(const std::vector<float>& voltages) {

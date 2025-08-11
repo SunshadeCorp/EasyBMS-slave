@@ -4,8 +4,8 @@
 
 #include <array>
 
-enum class BatteryConfig { meb8s, meb12s, mebAuto };
-enum class BatteryType { meb8s, meb12s };
+enum class BatteryConfig { meb12s = 0, meb8s, mebAuto };
+enum class BatteryType { meb12s = 0, meb8s };
 
 BatteryType detect_battery_type(const std::array<float, 12>& voltages);
 String as_string(BatteryConfig battery_config);

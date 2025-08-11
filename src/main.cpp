@@ -13,12 +13,8 @@
 #include "timed_history.hpp"
 #include "wifi.hpp"
 
-std::shared_ptr<BatteryMonitor> battery_monitor;
-std::shared_ptr<IBalancer> balancer;
-std::shared_ptr<Display> display;
 std::shared_ptr<BMS> bms;
 std::shared_ptr<MqttAdapter> mqtt_adapter;
-std::shared_ptr<BatteryInterface> battery_interface;
 
 // #define MOCK_BATTERY
 // #define MOCK_MQTT
@@ -36,11 +32,26 @@ std::shared_ptr<BatteryInterface> battery_interface;
     battery_interface->scenario_everything_ok();
     #else
     auto battery_interface = std::make_shared<LtcMebWrapper>();
-    #endif
 
-    battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
+    switch(battery_config)
+    {
+        case BatteryConfig::meb12s:
+            battery_interface->set_battery_type(BatteryType::meb12s);
+            break;
+        case BatteryConfig::meb8s:
+            battery_interface->set_battery_type(BatteryType::meb8s);
+            break;
+        case BatteryConfig::mebAuto:
+            if(!battery_interface->detect_battery())
+                battery_interface->set_battery_type(BatteryType::meb12s);
+            break;
+        default:
+            break;
+    }
+
+    auto battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
     battery_monitor->set_battery_config(battery_config);
-    display = std::make_shared<Display>();
+    auto display = std::make_shared<Display>();
     bms = std::make_shared<BMS>();
     bms->set_mode(bms_mode);
     bms->set_display(display);
@@ -69,24 +80,19 @@ std::shared_ptr<BatteryInterface> battery_interface;
         mqtt_adapter->set_ota_server(ota_server);
         mqtt_adapter->set_ota_cert(trustRoot);
         mqtt_adapter->init();
-        bms->set_mqtt_adapter(mqtt_adapter);
     }
 
     if (bms_mode == BalanceMode::single) {
-        balancer = std::make_shared<SingleModeBalancer>(60 * 1000, 30 * 1000);
+        bms->set_balancer(std::make_shared<SingleModeBalancer>(60 * 1000, 30 * 1000));
     } else if (bms_mode == BalanceMode::slave && use_mqtt) {
-        balancer = mqtt_adapter;
-    } else if (bms_mode == BalanceMode::none) {
-        balancer = nullptr;
+        bms->set_balancer(mqtt_adapter);
     }
-
-    bms->set_balancer(balancer);
 }
 
 void loop() {
-    if (mqtt_adapter != nullptr) {
+    if (mqtt_adapter) {
         mqtt_adapter->loop();
+    } else {
+        bms->loop();
     }
-
-    bms->loop();
 }

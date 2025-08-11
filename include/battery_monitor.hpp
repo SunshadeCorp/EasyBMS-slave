@@ -12,11 +12,12 @@
 
 class BatteryMonitor {
    public:
-    BatteryMonitor(std::shared_ptr<BatteryInterface> bat);
+    BatteryMonitor(const std::shared_ptr<BatteryInterface> &bat);
     void set_balance_bits(const std::vector<bool>& balance_bits);
     void measure();
+    void calc_cell_voltages() const;
     const std::vector<float>& cell_voltages() const;
-    const std::vector<bool>& balance_bits() const;
+    std::vector<bool> balance_bits() const;
     void set_battery_config(BatteryConfig config);
     BatteryConfig battery_config() const;
     BatteryType battery_type() const;
@@ -41,13 +42,11 @@ class BatteryMonitor {
 
     std::shared_ptr<BatteryInterface> _bat;
     BatteryConfig _battery_config;
-    BatteryType _battery_type;
 
     // Store cell diff history with 1h retention and 1 min granularity
-    TimedHistory<float> _cell_diff_history = TimedHistory<float>(1000 * 60 * 60, 1000 * 60);
+    TimedHistory<float> _cell_diff_history;
     std::vector<float> _cell_voltages;
     std::vector<float> _cell_diffs;
-    std::vector<bool> _balance_bits;
     float _min_voltage;
     float _max_voltage;
     float _avg_voltage;
@@ -59,7 +58,7 @@ class BatteryMonitor {
     float _soc;
     bool _measure_error;
     bool _balance_error;
-    uint32_t _balance_error_count{};
-    uint32_t _measure_error_count{};
+    uint32_t _balance_error_count;
+    uint32_t _measure_error_count;
     std::optional<float> _cell_diff_trend;
 };
