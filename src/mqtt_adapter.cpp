@@ -242,7 +242,7 @@ void MqttAdapter::set_ota_cert(const char* cert) {
 
 void MqttAdapter::on_mqtt_ota(String topic_string, String payload_string) {
     _mqtt->publish(_mac_topic + "/ota_start", String("ota started [") + payload_string + "] (" + millis() + ")");
-    _mqtt->publish(_mac_topic + "/ota_url", String("https://") + _ota_server + payload_string);
+    _mqtt->publish(_mac_topic + "/ota_url", String("http://") + _ota_server + payload_string);
     String ota_result = perform_ota_update(_ota_server + payload_string, _ota_cert);
     _mqtt->publish(_mac_topic + "/ota_ret", ota_result);
 }

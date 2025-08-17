@@ -46,11 +46,10 @@ String mac_string() {
 }
 
 String perform_ota_update(String url, const char* cert) {
-    NetworkClientSecure client_secure;
-    client_secure.setCACert(cert);
-    client_secure.setTimeout(12000);
+    NetworkClient client;
+    client.setTimeout(12000);
     httpUpdate.setLedPin(LED_BUILTIN, HIGH);
-    auto result = httpUpdate.update(client_secure, String("https://") + url);
+    auto result = httpUpdate.update(client, String("http://") + url);
     String result_string;
     switch (result) {
         case HTTP_UPDATE_FAILED:
