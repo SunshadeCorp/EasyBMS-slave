@@ -469,6 +469,7 @@ class LTC68042 {
 
     float offsetTemp;  // Offset of temperaturemeasurement
 
+    SPIClass SPI_local;
     AddressMode am;
     std::uint16_t address;
     ADCMode md;

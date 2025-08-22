@@ -59,7 +59,7 @@ class BatteryMonitor {
     float _soc;
     bool _measure_error;
     bool _balance_error;
-    uint32_t _balance_error_count;
-    uint32_t _measure_error_count;
+    uint32_t _balance_error_count{};
+    uint32_t _measure_error_count{};
     std::optional<float> _cell_diff_trend;
 };

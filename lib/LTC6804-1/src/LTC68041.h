@@ -29,7 +29,7 @@ class LTC68041 {
      * @brief Discharge timeouts in DCTO bits in CFGR5
      *
      */
-    enum DischargeTimeout : std::uint8_t {
+    enum DischargeTimeout : uint8_t {
         DISCHRG_TIMEOUT_DISABLED = 0x0 << DCTOPos,
         DISCHRG_TIMEOUT_0MIN5 = 0x1 << DCTOPos,
         DISCHRG_TIMEOUT_1MIN = 0x2 << DCTOPos,
@@ -52,7 +52,7 @@ class LTC68041 {
      * @brief Discharge time left values on DCTO read in CFGR5
      *
      */
-    enum DischargeTimeLeft : std::uint8_t {
+    enum DischargeTimeLeft : uint8_t {
         DISCHRG_TIME_LEFT_TIMEOUT_DISABLED = 0x0 << DCTOPos,
         DISCHRG_TIME_LEFT_0MIN_TO_0MIN5 = 0x1 << DCTOPos,
         DISCHRG_TIME_LEFT_0MIN5_TO_1MIN = 0x2 << DCTOPos,
@@ -106,7 +106,7 @@ class LTC68041 {
      * |101| 5    | Cell 5 and Cell 11  |
      * |110| 6    | Cell 6 and Cell 12  |
      */
-    enum CellChannel : std::uint16_t {
+    enum CellChannel : uint16_t {
         CH_ALL = 0b000,
         CH_CELL_1_AND_7 = 0b001,
         CH_CELL_2_AND_8 = 0b010,
@@ -129,7 +129,7 @@ class LTC68041 {
      * |101 | 5    | GPIO 5               |
      * |110 | 6    | Vref2                |
      */
-    enum AuxChannel : std::uint16_t {
+    enum AuxChannel : uint16_t {
         CHG_ALL = 0b000,
         CHG_GPIO1 = 0b001,
         CHG_GPIO2 = 0b010,
@@ -150,7 +150,7 @@ class LTC68041 {
      * |011 | 3    | VA               |
      * |100 | 4    | VD               |
      */
-    enum StatusGroup : std::uint16_t {
+    enum StatusGroup : uint16_t {
         CHST_ALL = 0b000,
         CHST_SOC = 0b001,
         CHST_ITMP = 0b010,
@@ -166,7 +166,7 @@ class LTC68041 {
      * |01| 1    | Self-Test 1    |
      * |10| 2    | Self-Test 2    |
      */
-    enum SelfTestMode : std::uint16_t {
+    enum SelfTestMode : uint16_t {
         ST_SELF_TEST_1 = (0b01 << STPos),
         ST_SELF_TEST_2 = (0b10 << STPos),
     };
@@ -180,7 +180,7 @@ class LTC68041 {
      * |0   | No - discharge is not permitted        |
      * |1   | Yes - discharge is permitted           |
      */
-    enum DischargeCtrl : std::uint16_t {
+    enum DischargeCtrl : uint16_t {
         DCP_DISABLED = (0b0 << DCPPos),
         DCP_ENABLED = (0b1 << DCPPos),
     };
@@ -194,7 +194,7 @@ class LTC68041 {
      * |0   | Pull-Down Current         |
      * |1   | Pull-Up Current           |
      */
-    enum PUPCtrl : std::uint16_t {
+    enum PUPCtrl : uint16_t {
         PUP_PULL_DOWN = (0b0 << PUPPos),
         PUP_PULL_UP = (0b1 << PUPPos),
     };
@@ -239,14 +239,14 @@ class LTC68041 {
 
     float cellComputeSOC(float voc);
 
-    void clrAuxRegs() const;
-    void clrCellRegs() const;
-    void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL) const;
-    void startCellConv(DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
-    void startCellConvTest(SelfTestMode st) const;
-    void startCellAuxConv(DischargeCtrl dcp) const;
-    void startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL) const;
-    void startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL) const;
+    void clrAuxRegs();
+    void clrCellRegs();
+    void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL);
+    void startCellConv(DischargeCtrl dcp, CellChannel ch = CH_ALL);
+    void startCellConvTest(SelfTestMode st);
+    void startCellAuxConv(DischargeCtrl dcp);
+    void startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL);
+    void startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CH_ALL);
 
    private:
     static constexpr int CELLNUM = 12;  // Number of cells checked by this Chip
@@ -267,7 +267,7 @@ class LTC68041 {
         CFGR0_GPIO5_Pos = 7,
     };
 
-    enum BitMasks : std::uint8_t {
+    enum BitMasks : uint8_t {
         CFG0_ADCOPT_MSK = 0x01,
         CFG0_SWTRD_MSK = 0x02,
         CFG0_REFON_MSK = 0x04,
@@ -388,7 +388,7 @@ class LTC68041 {
      *        these bits are here set to 0 and will be OR'ed in later before sending
      *        the command to the chips
      */
-    enum Commands : std::uint16_t {
+    enum Commands : uint16_t {
         WRCFG = 0x0001,
         RDCFG = 0x0002,
         RDCVA = 0x0004,
@@ -428,7 +428,7 @@ class LTC68041 {
      * |10| 2    | 7kHz Mode (Normal)  | 3kHz Mode             |
      * |11| 3    | 26Hz Mode (Filtered)| 2kHz Mode             |
      */
-    enum ADCMode : std::uint16_t {
+    enum ADCMode : uint16_t {
         MD_FAST = (0b01 << MDPos),
         MD_NORMAL = (0b10 << MDPos),
         MD_FILTERED = (0b11 << MDPos),
@@ -438,27 +438,28 @@ class LTC68041 {
      * @brief Register map of internal register groups
      */
     struct Registers {
-        std::uint8_t CFGR0w;                     // Register value of CFGR0 on next write
-        std::uint8_t CFGR0r;                     // Register value of CFGR0 on last read
-        std::array<std::uint8_t, SIZEREG> CFGR;  // Configuration Register Group
-        std::array<std::uint8_t, SIZEREG> CVAR;  // Cell Voltage Register Group A
-        std::array<std::uint8_t, SIZEREG> CVBR;  // Cell Voltage Register Group B
-        std::array<std::uint8_t, SIZEREG> CVCR;  // Cell Voltage Register Group C
-        std::array<std::uint8_t, SIZEREG> CVDR;  // Cell Voltage Register Group D
-        std::array<std::uint8_t, SIZEREG> AVAR;  // Auxiliary Register Group A
-        std::array<std::uint8_t, SIZEREG> AVBR;  // Auxiliary Register Group B
-        std::array<std::uint8_t, SIZEREG> STAR;  // Status Register Group A
-        std::array<std::uint8_t, SIZEREG> STBR;  // Status Register Group B
-        std::array<std::uint8_t, SIZEREG> COMM;  // COMM Register Group
+        uint8_t CFGR0w;                     // Register value of CFGR0 on next write
+        uint8_t CFGR0r;                     // Register value of CFGR0 on last read
+        std::array<uint8_t, SIZEREG> CFGR;  // Configuration Register Group
+        std::array<uint8_t, SIZEREG> CVAR;  // Cell Voltage Register Group A
+        std::array<uint8_t, SIZEREG> CVBR;  // Cell Voltage Register Group B
+        std::array<uint8_t, SIZEREG> CVCR;  // Cell Voltage Register Group C
+        std::array<uint8_t, SIZEREG> CVDR;  // Cell Voltage Register Group D
+        std::array<uint8_t, SIZEREG> AVAR;  // Auxiliary Register Group A
+        std::array<uint8_t, SIZEREG> AVBR;  // Auxiliary Register Group B
+        std::array<uint8_t, SIZEREG> STAR;  // Status Register Group A
+        std::array<uint8_t, SIZEREG> STBR;  // Status Register Group B
+        std::array<uint8_t, SIZEREG> COMM;  // COMM Register Group
     };
 
     float offsetTemp;  // Offset of temperaturemeasurement
 
+    SPIClass SPI_local;
     ADCMode md;
     byte pinCS;  // ChipSelectPin
     Registers regs;
 
-    static constexpr std::uint16_t crc15Table[256] = {
+    static constexpr uint16_t crc15Table[256] = {
         0x0000, 0xc599, 0xceab, 0x0b32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  //!< precomputed CRC15 Table
         0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1, 0xbbf3, 0x7e6a, 0x5990, 0x9c09, 0x973b, 0x52a2, 0x815f, 0x44c6,
         0x4ff4, 0x8a6d, 0x5b2e, 0x9eb7, 0x9585, 0x501c, 0x83e1, 0x4678, 0x4d4a, 0x88d3, 0xaf29, 0x6ab0, 0x6182, 0xa41b, 0x77e6, 0xb27f, 0xb94d, 0x7cd4, 0xf6b9,
@@ -475,19 +476,19 @@ class LTC68041 {
         0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368, 0x96f1, 0x9dc3, 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095};
 
     template <std::size_t N>
-    constexpr void parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data);
+    constexpr void parseVoltages(const unsigned int group, const std::array<uint8_t, SIZEREG> &regGroup, std::array<float, N> &data);
 
-    static constexpr float parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, RegNames index);
+    static constexpr float parseVoltage(const std::array<uint8_t, SIZEREG> &regGroup, RegNames index);
 
-    constexpr std::uint16_t calcPEC15(const std::uint16_t data) const;
-
-    template <std::size_t N>
-    constexpr std::uint16_t calcPEC15(const std::array<std::uint8_t, N> &data) const;
+    constexpr uint16_t calcPEC15(const uint16_t data) const;
 
     template <std::size_t N>
-    bool spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data);
+    constexpr uint16_t calcPEC15(const std::array<uint8_t, N> &data) const;
 
-    void spi_write_cmd(const std::uint16_t cmd) const;
+    template <std::size_t N>
+    bool spi_read_cmd(const uint16_t cmd, std::array<uint8_t, N> &rx_data);
+
+    void spi_write_cmd(const uint16_t cmd);
 };
 
 template <typename T, std::size_t N>

@@ -18,7 +18,7 @@ https://github.com/jontubs/EasyBMS
  *
  * @param pCS Pin used as chip select
  */
-LTC68041::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}) {
+LTC68041::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(FSPI) {
     Serial.print("Objekt angelegt");
 
     regs.CFGR0w = 0xFE;
@@ -37,7 +37,8 @@ void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinCLK, OUTPUT);
     pinMode(pinCS, OUTPUT);
 
-    SPI.begin();
+    SPI_local.begin(pinCLK, pinMISO, pinMOSI, -1);
+    // SPI.begin();
 }
 
 /**
@@ -45,7 +46,7 @@ void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
  *
  */
 void LTC68041::destroySPI() {
-    SPI.end();
+    SPI_local.end();
 }
 
 /**
@@ -61,8 +62,8 @@ void LTC68041::wakeup_idle() const {
 /*!******************************************************************************************************
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
-constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const {
-    std::uint16_t remainder = 16, addr = 0;  // initialize the PEC
+constexpr uint16_t LTC68041::calcPEC15(const uint16_t data) const {
+    uint16_t remainder = 16, addr = 0;  // initialize the PEC
 
     addr = ((remainder >> 7) ^ (data >> 8)) & 0xff;  // calculate PEC table address
     remainder = (remainder << 8) ^ crc15Table[addr];
@@ -77,8 +78,8 @@ constexpr std::uint16_t LTC68041::calcPEC15(const std::uint16_t data) const {
 Calculates the CRC sum of some data bytes given by the array "data"
 *********************************************************************************************************/
 template <std::size_t N>
-constexpr std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &data) const {
-    std::uint16_t remainder = 16, addr = 0;  // initialize the PEC
+constexpr uint16_t LTC68041::calcPEC15(const std::array<uint8_t, N> &data) const {
+    uint16_t remainder = 16, addr = 0;  // initialize the PEC
 
     for (const auto &element : data)  // loops for each byte in data array
     {
@@ -92,46 +93,46 @@ constexpr std::uint16_t LTC68041::calcPEC15(const std::array<std::uint8_t, N> &d
 /*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port.
 Tested and runs fine
-[in] std::array<std::uint8_t, N1> &tx_Data array of data to be written on the SPI port
-[out] std::array<std::uint8_t, N2> &rx_data array that read data will be written too.
+[in] std::array<uint8_t, N1> &tx_Data array of data to be written on the SPI port
+[out] std::array<uint8_t, N2> &rx_data array that read data will be written too.
 *********************************************************************************************************/
 template <std::size_t N>
-bool LTC68041::spi_read_cmd(const std::uint16_t cmd, std::array<std::uint8_t, N> &rx_data) {
-    std::uint16_t pec = calcPEC15(cmd);
+bool LTC68041::spi_read_cmd(const uint16_t cmd, std::array<uint8_t, N> &rx_data) {
+    uint16_t pec = calcPEC15(cmd);
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(pec);
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(pec);
 
     for (auto &element : rx_data) {
-        element = SPI.transfer(1);
+        element = SPI_local.transfer(1);
     }
 
-    pec = SPI.transfer16(1);
+    pec = SPI_local.transfer16(1);
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
 
     return (pec == calcPEC15(rx_data));
 }
 
 /*!******************************************************************************************************
 Writes and read a set number of bytes using the SPI port without expecting an answer
-std::array<std::uint8_t, N> &data //Array of bytes to be written on the SPI port
+std::array<uint8_t, N> &data //Array of bytes to be written on the SPI port
 *********************************************************************************************************/
-void LTC68041::spi_write_cmd(const std::uint16_t cmd) const {
-    std::uint16_t pec = calcPEC15(cmd);
+void LTC68041::spi_write_cmd(const uint16_t cmd) {
+    uint16_t pec = calcPEC15(cmd);
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(pec);
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(pec);
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
 }
 
 /*!******************************************************************************************************
@@ -255,24 +256,24 @@ Write the LTC6804 configuration register
 *********************************************************************************************************/
 void LTC68041::cfgWrite()  // A two dimensional array of the configuration data that will be written
 {
-    std::uint16_t cmd = WRCFG;
+    uint16_t cmd = WRCFG;
 
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
+    SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
 
-    SPI.transfer16(cmd);
-    SPI.transfer16(calcPEC15(cmd));
+    SPI_local.transfer16(cmd);
+    SPI_local.transfer16(calcPEC15(cmd));
 
     regs.CFGR[CFGR0] = regs.CFGR0w;
 
     for (const auto &element : regs.CFGR) {
-        SPI.transfer(element);
+        SPI_local.transfer(element);
     }
 
-    SPI.transfer16(calcPEC15(regs.CFGR));
+    SPI_local.transfer16(calcPEC15(regs.CFGR));
 
     digitalWrite(pinCS, HIGH);
-    SPI.endTransaction();
+    SPI_local.endTransaction();
     /*
         //2
         cmd_index = 4;
@@ -363,7 +364,7 @@ float LTC68041::cellComputeSOC(float voc) {
   2. Calculate clraux cmd PEC and load pec into cmd array
   3. send broadcast clraux command
 *********************************************************************************************************/
-void LTC68041::clrAuxRegs() const {
+void LTC68041::clrAuxRegs() {
     // 3
     wakeup_idle();  // This will guarantee that the LTC6804 isoSPI port is awake.This command can be removed.
     // 4
@@ -429,7 +430,7 @@ bool LTC68041::getCellVoltages(std::array<float, N> &voltages, const CellChannel
  * @param data Array for target values
  */
 template <std::size_t N>
-constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<std::uint8_t, SIZEREG> &regGroup, std::array<float, N> &data) {
+constexpr inline void LTC68041::parseVoltages(const unsigned int group, const std::array<uint8_t, SIZEREG> &regGroup, std::array<float, N> &data) {
     unsigned int index = (group)*3;
 
     for (unsigned int i = 0; i < (regGroup.size() - 1); i += 2) {
@@ -437,7 +438,7 @@ constexpr inline void LTC68041::parseVoltages(const unsigned int group, const st
     }
 }
 
-constexpr inline float LTC68041::parseVoltage(const std::array<std::uint8_t, SIZEREG> &regGroup, const RegNames index) {
+constexpr inline float LTC68041::parseVoltage(const std::array<uint8_t, SIZEREG> &regGroup, const RegNames index) {
     return static_cast<float>(regGroup[index] | (static_cast<unsigned int>(regGroup[index + 1]) << 8u)) * 100E-6f;
 }
 
@@ -471,7 +472,7 @@ bool LTC68041::cfgRead() {
   2. Calculate clrcell cmd PEC and load pec into cmd array
   3. send broadcast clrcell command to LTC6804
 *********************************************************************************************************/
-void LTC68041::clrCellRegs() const {
+void LTC68041::clrCellRegs() {
     // 3
     // wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
 
@@ -492,7 +493,7 @@ No other command necessary, Just call this and get
  6. Send Serial message with result
 *********************************************************************************************************/
 bool LTC68041::checkSPI(const bool dbgOut) {
-    std::array<std::uint8_t, 6> response = {};
+    std::array<uint8_t, 6> response = {};
 
     // wakeup_idle (); //This will guarantee that the LTC6804 isoSPI port is awake. This command can be removed.
     if (dbgOut) digitalWrite(LED_BUILTIN, HIGH);
@@ -683,8 +684,8 @@ int LTC68041::getStatusRevision() {
   CH   Determines which cell channels are converted
   DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
-void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) const {
-    std::uint16_t cmd = ADCV;
+void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) {
+    uint16_t cmd = ADCV;
     cmd |= md;
     cmd |= dcp;
     cmd |= ch;
@@ -698,8 +699,8 @@ void LTC68041::startCellConv(DischargeCtrl dcp, CellChannel ch) const {
 /*!******************************************************************************************************
 Starts cell voltage conversion with test values from selftest 2
 *********************************************************************************************************/
-void LTC68041::startCellConvTest(SelfTestMode st) const {
-    std::uint16_t cmd = CVST;
+void LTC68041::startCellConvTest(SelfTestMode st) {
+    uint16_t cmd = CVST;
     cmd |= md;
     cmd |= st;
 
@@ -717,8 +718,8 @@ void LTC68041::startCellConvTest(SelfTestMode st) const {
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startAuxConv(AuxChannel chg) const {
-    std::uint16_t cmd = ADAX;
+void LTC68041::startAuxConv(AuxChannel chg) {
+    uint16_t cmd = ADAX;
     cmd |= md;
     cmd |= chg;
 
@@ -733,8 +734,8 @@ void LTC68041::startAuxConv(AuxChannel chg) const {
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startCellAuxConv(DischargeCtrl dcp) const {
-    std::uint16_t cmd = ADCVAX;
+void LTC68041::startCellAuxConv(DischargeCtrl dcp) {
+    uint16_t cmd = ADCVAX;
     cmd |= md;
     cmd |= dcp;
 
@@ -749,8 +750,8 @@ void LTC68041::startCellAuxConv(DischargeCtrl dcp) const {
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startStatusConv(StatusGroup chst) const {
-    std::uint16_t cmd = ADSTAT;
+void LTC68041::startStatusConv(StatusGroup chst) {
+    uint16_t cmd = ADSTAT;
     cmd |= md;
     cmd |= chst;
 
@@ -765,8 +766,8 @@ void LTC68041::startStatusConv(StatusGroup chst) const {
   2. Calculate adax cmd PEC and load pec into cmd array
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
-void LTC68041::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) const {
-    std::uint16_t cmd = ADOW;
+void LTC68041::startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch) {
+    uint16_t cmd = ADOW;
     cmd |= md;
     cmd |= pup;
     cmd |= dcp;

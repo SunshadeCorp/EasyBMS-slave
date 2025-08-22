@@ -3,7 +3,17 @@
 #include "battery_type.hpp"
 #include "balance_mode.hpp"
 
+/**
+ * meb8s:   8s batteries
+ * meb12s:  12s batteries
+ * mebAuto: detect 8s or 12s on every measure
+ */
 constexpr BatteryConfig battery_config = BatteryConfig::mebAuto;
+/**
+ * slave:   balance if mqtt request from master
+ * single:  balance solo
+ * none:    dont balance
+ */
 constexpr BalanceMode bms_mode = BalanceMode::single;
 
 constexpr char ssid[] = "WIFI_SSID";

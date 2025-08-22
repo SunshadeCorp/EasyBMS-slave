@@ -1,6 +1,7 @@
 #include "ltc_meb_wrapper.hpp"
 
 #include <LTC68041.cpp>  // used for template functions
+// #include <LTC68041.h>
 
 #include "debug.hpp"
 
@@ -73,7 +74,7 @@ float LtcMebWrapper::module_voltage() {
 }
 
 float LtcMebWrapper::chip_temp() {
-    return _ltc.getStatusVoltage(_ltc.StatusGroup::CHST_ITMP);
+    return _ltc.getStatusVoltage(LTC68041::CHST_ITMP);
 }
 
 std::array<float, 12> LtcMebWrapper::cell_voltages() {
@@ -81,8 +82,12 @@ std::array<float, 12> LtcMebWrapper::cell_voltages() {
     bool success = _ltc.getCellVoltages<12>(voltages);
     if (success) {
         _measure_error = false;
+        // voltages[0] += 0.004f;
     } else {
         _measure_error = true;
+        // for (auto& voltage : voltages) {
+        //     voltage = -1.f;
+        // }
     }
 
     return voltages;
