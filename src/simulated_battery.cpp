@@ -43,11 +43,11 @@ void SimulatedBattery::scenario_measure_error() {
     _measure_error = true;
 }
 
-float SimulatedBattery::module_temp_1() {
-    return 20;
+std::vector<float> SimulatedBattery::module_temps() {
+    return std::vector<float>{20, 20};
 }
-float SimulatedBattery::module_temp_2() {
-    return 20;
+std::vector<float> SimulatedBattery::pcb_temps() {
+    return std::vector<float>{20, 20};
 }
 float SimulatedBattery::chip_temp() {
     return 22;

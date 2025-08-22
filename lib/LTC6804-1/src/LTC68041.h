@@ -271,8 +271,6 @@ class LTC68041 {
     // debug methods
     bool checkSPI();
 
-    float cellComputeSOC(float voc);
-
     void clrAuxRegs();
     void clrCellRegs();
     void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL);

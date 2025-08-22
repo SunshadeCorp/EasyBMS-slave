@@ -15,7 +15,8 @@ class BatteryMonitor {
     BatteryMonitor(const std::shared_ptr<BatteryInterface> &bat);
     void set_balance_bits(const std::vector<bool>& balance_bits);
     void measure();
-    void calc_cell_voltages() const;
+    void calc_cell_voltages();
+    void calc_aux_data();
     const std::vector<float>& cell_voltages() const;
     std::vector<bool> balance_bits() const;
     void set_battery_config(BatteryConfig config);
@@ -26,8 +27,8 @@ class BatteryMonitor {
     float avg_voltage() const;
     float cell_diff() const;
     float module_voltage() const;
-    float module_temp_1() const;
-    float module_temp_2() const;
+    const std::vector<float>& module_temps() const;
+    const std::vector<float>& pcb_temps() const;
     float chip_temp() const;
     float soc() const;
     uint32_t measure_error_count() const;
@@ -38,7 +39,6 @@ class BatteryMonitor {
 
    private:
     void calc_cell_diff_trend();
-    void detect_battery(const std::array<float, 12>& voltages);
 
     std::shared_ptr<BatteryInterface> _bat;
     BatteryConfig _battery_config;
@@ -47,13 +47,13 @@ class BatteryMonitor {
     TimedHistory<float> _cell_diff_history;
     std::vector<float> _cell_voltages;
     std::vector<float> _cell_diffs;
+    std::vector<float> _module_temps;
+    std::vector<float> _pcb_temps;
     float _min_voltage;
     float _max_voltage;
     float _avg_voltage;
     float _cell_diff;
     float _module_voltage;
-    float _module_temp_1;
-    float _module_temp_2;
     float _chip_temp;
     float _soc;
     bool _measure_error;

@@ -15,8 +15,8 @@ class BatteryInterface {
     virtual std::vector<bool> get_balance_bits() = 0;
     virtual void measure_cells() = 0;
     virtual void measure_aux() = 0;
-    virtual float module_temp_1() = 0;
-    virtual float module_temp_2() = 0;
+    virtual std::vector<float> module_temps() = 0;
+    virtual std::vector<float> pcb_temps() = 0;
     virtual float chip_temp() = 0;
     virtual float module_voltage() = 0;
     virtual std::vector<float> cell_voltages() = 0;

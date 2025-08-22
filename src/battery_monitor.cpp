@@ -16,13 +16,13 @@ BatteryMonitor::BatteryMonitor(const std::shared_ptr<BatteryInterface> &bat) :
     _cell_diff_history(1000 * 60 * 60, 1000 * 60),
     _cell_voltages{},
     _cell_diffs{},
+    _module_temps{},
+    _pcb_temps{},
     _min_voltage{},
     _max_voltage{},
     _avg_voltage{},
     _cell_diff{},
     _module_voltage{},
-    _module_temp_1{},
-    _module_temp_2{},
     _chip_temp{},
     _soc{},
     _measure_error{},
@@ -38,7 +38,7 @@ void BatteryMonitor::set_battery_config(BatteryConfig config) {
     _battery_config = config;
 }
 
-void BatteryMonitor::calc_cell_voltages() const {
+void BatteryMonitor::calc_cell_voltages() {
     _cell_voltages = _bat->cell_voltages();
 
     _min_voltage = *std::min_element(_cell_voltages.begin(), _cell_voltages.end());
@@ -62,6 +62,12 @@ void BatteryMonitor::calc_cell_voltages() const {
     if (_measure_error) {
         _measure_error_count++;
     }
+}
+void BatteryMonitor::calc_aux_data() {
+    _chip_temp = _bat->chip_temp();
+    _module_voltage = _bat->module_voltage();
+    _module_temps = _bat->module_temps();
+    _pcb_temps = _bat->pcb_temps();
 }
 
 const std::vector<float>& BatteryMonitor::cell_voltages() const {
@@ -124,19 +130,19 @@ float BatteryMonitor::cell_diff() const {
 }
 
 float BatteryMonitor::module_voltage() const {
-    return _module_voltage = _bat->module_voltage();
+    return _module_voltage;
 }
 
-float BatteryMonitor::module_temp_1() const {
-    return _module_temp_1 = _bat->module_temp_1();
+const std::vector<float>& BatteryMonitor::module_temps() const {
+    return _module_temps;
 }
 
-float BatteryMonitor::module_temp_2() const {
-    return _module_temp_2 = _bat->module_temp_2();
+const std::vector<float>& BatteryMonitor::pcb_temps() const {
+    return _pcb_temps;
 }
 
 float BatteryMonitor::chip_temp() const {
-    return _chip_temp = _bat->chip_temp();
+    return _chip_temp;
 }
 
 float BatteryMonitor::soc() const {

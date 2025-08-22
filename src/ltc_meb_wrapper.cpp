@@ -143,12 +143,22 @@ void LtcMebWrapper::measure_aux() {
     _ltc.startStatusConv();
 }
 
-float LtcMebWrapper::module_temp_1() {
-    return raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1));
+std::vector<float> LtcMebWrapper::module_temps() {
+    std::vector<float> temps;
+
+    temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO1)));
+    temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2)));
+    
+    return temps;
 }
 
-float LtcMebWrapper::module_temp_2() {
-    return raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO2));
+std::vector<float> LtcMebWrapper::pcb_temps() {
+    std::vector<float> temps;
+
+    temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO3)));
+    temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041::AuxChannel::CHG_GPIO4)));
+    
+    return temps;
 }
 
 float LtcMebWrapper::module_voltage() {

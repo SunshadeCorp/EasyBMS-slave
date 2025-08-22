@@ -136,6 +136,7 @@ std::vector<bool> MqttAdapter::balance_bits() {
 void MqttAdapter::publish(const String &topic) {
     auto m = _bms->battery_monitor();
     auto balance_bits = m->balance_bits();
+    String tmp = String();
 
     _mqtt->publish(topic + "/uptime", millis());
     _mqtt->publish(topic + "/pec15_error_count", m->measure_error_count());
@@ -146,16 +147,27 @@ void MqttAdapter::publish(const String &topic) {
         return;
     }
 
-    for (size_t i = 0; i < m->cell_voltages().size(); i++) {
+    for (size_t i = 0; const auto &v : m->cell_voltages()) {
         String cell_name = String(i + 1);
         if (cell_name != "undefined") {
-            _mqtt->publish(topic + "/cell/" + cell_name + "/voltage", String(m->cell_voltages()[i], 3));
-            _mqtt->publish(topic + "/cell/" + cell_name + "/is_balancing", balance_bits[i] ? "1" : "0");
+            _mqtt->publish(topic + "/cell/" + cell_name + "/voltage", String(v, 3));
+            _mqtt->publish(topic + "/cell/" + cell_name + "/is_balancing", balance_bits[i++] ? "1" : "0");
         }
     }
 
     _mqtt->publish(topic + "/module_voltage", m->module_voltage());
-    _mqtt->publish(topic + "/module_temps", String(m->module_temp_1()) + "," + String(m->module_temp_2()));
+
+    for(const auto &temp : m->module_temps()) {
+        tmp += String(temp) + ",";
+    }
+
+    _mqtt->publish(topic + "/module_temps", tmp);
+
+    for(const auto &temp : m->pcb_temps()) {
+        tmp += String(temp) + ",";
+    }
+
+    _mqtt->publish(topic + "/pcb_temps", tmp);
     _mqtt->publish(topic + "/chip_temp", m->chip_temp());
     _mqtt->publish(topic + "/battery_type", as_string(m->battery_type()));
 }
