@@ -36,9 +36,9 @@ void BMS::set_balancer(std::shared_ptr<IBalancer> balancer) {
     _balancer = balancer;
 }
 
-// void BMS::set_display(std::shared_ptr<Display> display) {
-//     _display = display;
-// }
+void BMS::set_display(std::shared_ptr<Display> display) {
+    _display = display;
+}
 
 void BMS::set_mqtt_adapter(std::shared_ptr<MqttAdapter> mqtt_adapter) {
     _mqtt_adapter = mqtt_adapter;
@@ -67,9 +67,9 @@ void BMS::loop() {
             _mqtt_adapter->update();
         }
 
-        // if (_display != nullptr) {
-        //     _display->update(_battery_monitor);
-        // }
+        if (_display != nullptr) {
+            _display->update(_battery_monitor);
+        }
     }
 
     if (millis() - _last_blink_time < BLINK_TIME) {
