@@ -24,7 +24,6 @@ std::shared_ptr<BatteryInterface> battery_interface;
 [[maybe_unused]] void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(6, OUTPUT); // SCLK
-    pinMode(18, OUTPUT);
     // pinMode(D1, OUTPUT); // LED1
     digitalWrite(LED_BUILTIN, false);
 
