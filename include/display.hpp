@@ -7,11 +7,11 @@
 #include "battery_monitor.hpp"
 
 /*
-#define TFT_CS     D0
-#define TFT_RST    -1  // TFT RST = Arduino RST
-#define TFT_DC   D3
-#define TFT_SCLK D5
-#define TFT_MOSI D7
+#define TFT_CS   19
+#define TFT_RST  4  // TFT RST = Arduino RST
+#define TFT_DC   5
+#define TFT_SCLK 6
+#define TFT_MOSI 2
 */
 
 class Display {
