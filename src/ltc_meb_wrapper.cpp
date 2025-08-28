@@ -81,6 +81,7 @@ std::array<float, 12> LtcMebWrapper::cell_voltages() {
     bool success = _ltc.getCellVoltages<12>(voltages);
     if (success) {
         _measure_error = false;
+        voltages[0] += 0.004f;
     } else {
         _measure_error = true;
     }
