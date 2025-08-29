@@ -13,6 +13,8 @@ https://github.com/jontubs/EasyBMS
 #include <cmath>
 #include <cstdint>
 
+#define CS_TFT 19
+
 /**
  * @brief Creating of the object LTC68041
  *
@@ -55,6 +57,7 @@ void LTC68041::destroySPI() {
  */
 void LTC68041::wakeup_idle() const {
     digitalWrite(pinCS, LOW);
+    digitalWrite(CS_TFT, HIGH);
     delayMicroseconds(2);  // Guarantees the isoSPI will be in ready mode
     digitalWrite(pinCS, HIGH);
 }
@@ -102,6 +105,7 @@ bool LTC68041::spi_read_cmd(const uint16_t cmd, std::array<uint8_t, N> &rx_data)
 
     SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
+    digitalWrite(CS_TFT, HIGH);
 
     SPI_local.transfer16(cmd);
     SPI_local.transfer16(pec);
@@ -127,6 +131,7 @@ void LTC68041::spi_write_cmd(const uint16_t cmd) {
 
     SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
+    digitalWrite(CS_TFT, HIGH);
 
     SPI_local.transfer16(cmd);
     SPI_local.transfer16(pec);
@@ -260,6 +265,7 @@ void LTC68041::cfgWrite()  // A two dimensional array of the configuration data 
 
     SPI_local.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3));
     digitalWrite(pinCS, LOW);
+    digitalWrite(CS_TFT, HIGH);
 
     SPI_local.transfer16(cmd);
     SPI_local.transfer16(calcPEC15(cmd));
