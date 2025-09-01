@@ -4,12 +4,15 @@
 
 #include <vector>
 #include <bitset>
+#include <atomic>
 
 #include "battery_interface.hpp"
 
+#include "config.h"
+
 class LtcMebWrapper : public BatteryInterface {
    public:
-    LtcMebWrapper();
+    LtcMebWrapper(size_t index = 0);
     void init() override;
     bool detect_battery() override;
     void set_battery_type(BatteryType type) override;
@@ -30,7 +33,22 @@ class LtcMebWrapper : public BatteryInterface {
     template<std::size_t N>
     std::vector<float> get_cells() {
         std::array<float, N> voltages;
-        bool success = _ltc.getCellVoltages(voltages);
+        bool success;
+
+        if constexpr (ltc_count > 1) {
+            switch (_ltc_index) {
+                case 0:
+                success = _ltc.getCellVoltages<N,0>(voltages);
+                break;
+                case 1:
+                success = _ltc.getCellVoltages<N,1>(voltages);
+                break;
+                default:
+                break;
+            }
+        } else {
+            success = _ltc.getCellVoltages(voltages);
+        }
 
         if (success) {
             _measure_error = false;
@@ -45,8 +63,10 @@ class LtcMebWrapper : public BatteryInterface {
     }
 
     BatteryType _bat_type;
-    LTC68041 _ltc;
+    static std::atomic<bool> initialized;
+    static LTC68041<ltc_count> _ltc;
+    const size_t _ltc_index;
     bool _balance_error;
     bool _measure_error;
-    float raw_voltage_to_real_module_temp(float raw_voltage);
+    constexpr float raw_voltage_to_real_module_temp(float raw_voltage);
 };
