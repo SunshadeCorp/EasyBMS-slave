@@ -18,6 +18,7 @@ class MqttAdapter : public IBalancer {
     MqttAdapter(const std::shared_ptr<BMS> &bms, const std::shared_ptr<IMqttClient> &mqtt);
 
     void init();
+    void init(const String &index);
     void reconnect();
     void loop();
     void balance(const std::vector<float>& voltages) override;

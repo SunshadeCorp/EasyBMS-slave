@@ -45,7 +45,15 @@ String MqttAdapter::flash_description() const {
 }
 
 void MqttAdapter::init() {
-    _mac_topic = String("esp-module/") + mac_string();
+    init("");
+}
+
+void MqttAdapter::init(const String &index) {
+    if(index == "")
+        _mac_topic = String("esp-module/") + mac_string();
+    else
+        _mac_topic = String("esp-module/") + mac_string() + "_" + index;
+        
     _module_topic = _mac_topic;
     _mqtt->set_will(_module_topic + "/available", 0, true, "offline");
 }

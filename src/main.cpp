@@ -13,8 +13,8 @@
 #include "timed_history.hpp"
 #include "wifi.hpp"
 
-std::shared_ptr<BMS> bms;
-std::shared_ptr<MqttAdapter> mqtt_adapter;
+std::array<std::shared_ptr<BMS>, ltc_count> bmsArr;
+std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 
 // #define MOCK_BATTERY
 // #define MOCK_MQTT
@@ -31,35 +31,40 @@ std::shared_ptr<MqttAdapter> mqtt_adapter;
     auto battery_interface = std::make_shared<SimulatedBattery>();
     battery_interface->scenario_everything_ok();
     #else
-    auto battery_interface = std::make_shared<LtcMebWrapper>();
+    for (int i = 0; auto &bms : bmsArr) {
+        auto battery_interface = std::make_shared<LtcMebWrapper>(i++);
 
-    switch(battery_config)
-    {
-        case BatteryConfig::meb12s:
-            battery_interface->set_battery_type(BatteryType::meb12s);
-            break;
-        case BatteryConfig::meb8s:
-            battery_interface->set_battery_type(BatteryType::meb8s);
-            break;
-        case BatteryConfig::mebAuto:
-            if(!battery_interface->detect_battery())
+        switch(battery_config)
+        {
+            case BatteryConfig::meb12s:
                 battery_interface->set_battery_type(BatteryType::meb12s);
-            break;
-        default:
-            break;
-    }
+                break;
+            case BatteryConfig::meb8s:
+                battery_interface->set_battery_type(BatteryType::meb8s);
+                break;
+            case BatteryConfig::mebAuto:
+                if(!battery_interface->detect_battery())
+                    battery_interface->set_battery_type(BatteryType::meb12s);
+                break;
+            default:
+                break;
+        }
 
-    auto battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
-    battery_monitor->set_battery_config(battery_config);
-    auto display = std::make_shared<Display>();
-    bms = std::make_shared<BMS>();
-    bms->set_mode(bms_mode);
-    bms->set_display(display);
-    bms->set_battery_monitor(battery_monitor);
+        auto battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
+        battery_monitor->set_battery_config(battery_config);
+        auto display = std::make_shared<Display>();
+        bms = std::make_shared<BMS>();
+        bms->set_mode(bms_mode);
+        bms->set_display(display);
+        bms->set_battery_monitor(battery_monitor);
+
+        if (bms_mode == BalanceMode::single)
+            bms->set_balancer(std::make_shared<SingleModeBalancer>(60 * 1000, 30 * 1000));
+    }
 
     display->init();
 
-    if (use_mqtt) {
+    if constexpr (use_mqtt) {
         DEBUG_PRINTLN("Setup MQTT");
         auto hostname = String("easybms-") + mac_string();
         connect_wifi(hostname, ssid, password);
@@ -76,23 +81,33 @@ std::shared_ptr<MqttAdapter> mqtt_adapter;
         mqtt->set_id(hostname);
         #endif
 
-        mqtt_adapter = std::make_shared<MqttAdapter>(bms, mqtt);
-        mqtt_adapter->set_ota_server(ota_server);
-        mqtt_adapter->set_ota_cert(trustRoot);
-        mqtt_adapter->init();
-    }
+        for(int i = 0; auto &mqtt_adapter : mqtt_adapterArr) {
+            mqtt_adapter = std::make_shared<MqttAdapter>(bmsArr[i], mqtt);
 
-    if (bms_mode == BalanceMode::single) {
-        bms->set_balancer(std::make_shared<SingleModeBalancer>(60 * 1000, 30 * 1000));
-    } else if (bms_mode == BalanceMode::slave && use_mqtt) {
-        bms->set_balancer(mqtt_adapter);
+            if (i == 0) {
+                mqtt_adapter->set_ota_server(ota_server);
+                mqtt_adapter->set_ota_cert(trustRoot);
+                mqtt_adapter->init();
+            } else {
+                mqtt_adapter->init(String(i));
+            }
+
+            if (bms_mode == BalanceMode::slave)
+                bmsArr[i]->set_balancer(mqtt_adapter);
+
+            i++;
+        }
     }
 }
 
 void loop() {
-    if (mqtt_adapter) {
-        mqtt_adapter->loop();
+    if constexpr (use_mqtt) {
+        for (auto &mqtt_adapter : mqtt_adapterArr)
+            if (mqtt_adapter)
+                mqtt_adapter->loop();
     } else {
-        bms->loop();
+        for (auto &bms : bmsArr)
+            if (bms)
+                bms->loop();
     }
 }
