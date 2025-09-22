@@ -212,42 +212,169 @@ class LTC68041 {
     };
 
     // Methods
+    /**
+     * @brief Construct a new LTC68041 object
+     * 
+     * @param pCS chip select pin, default 10
+     * @param tempOffset offset of internal temp sensor, default 0.0
+     */
     explicit LTC68041(byte pCS = 10, float tempOffset = 0.0);
+    /**
+     * @brief Initializes the SPI bus instance used for communication
+     * 
+     * @param pinMOSI Pin used as MOSI
+     * @param pinMISO Pin used as MISO
+     * @param pinCLK Pin used as SCLK
+     */
     void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
+    /**
+     * @brief Deinitialize SPI bus Instance
+     * 
+     */
     void destroySPI();
+    /**
+     * @brief Wake isoSPI up from idle state
+     *        Generic wakeup commannd to wake isoSPI up out of idle
+     */
     void wakeup_idle() const;
+    /**
+     * @brief Poll for ongoing ADC conversion and wait for its end
+     * 
+     * @return true if conversion completed
+     * @return false if timeout expired
+     */
     bool waitForConversion();
+    /**
+     * @brief Read config register group from chain of LTC chips from (iso)SPI
+     * 
+     * @return true if read was successfull
+     * @return false if read failed
+     */
     bool cfgRead();
+    /**
+     * @brief Write config register group to chain of LTC chips over (iso)SPI
+     * 
+     */
     void cfgWrite();
+    /**
+     * @brief Set cell undervoltage value in config register group
+     * 
+     * @param Undervoltage in Volts
+     */
     void cfgSetVUV(const float Undervoltage);
+    /**
+     * @brief Get cell undervoltage value in config register group
+     * 
+     * @return undervoltage as float in Volts 
+     */
     float cfgGetVUV() const;
+    /**
+     * @brief Set cell overvoltage value in config register group
+     * 
+     * @param Overvoltage in Volts
+     */
     void cfgSetVOV(const float Overvoltage);
+    /**
+     * @brief Get cell overvoltage value in config register group
+     * 
+     * @return overvoltage as float in Volts 
+     */
     float cfgGetVOV() const;
-    void cfgSetDCC(std::bitset<12> dcc);
-    std::bitset<12> cfgGetDCC() const;
+    /**
+     * @brief Set discharge timer in config register group
+     * 
+     * @param timeout discharge timeout as enum value of type DischargeTimeout
+     */
     void cfgSetDischargeTimeout(DischargeTimeout timeout);
+    /**
+     * @brief Get discharge timer in config register group
+     * 
+     * @return discharge timeout as as enum value of type DischargeTimeLeft
+     */
     DischargeTimeLeft cfgGetDischargeTimeLeft() const;
+    /**
+     * @brief Set reference voltage enable bit in config register group
+     * 
+     * @param value true or false
+     */
     void cfgSetRefOn(const bool value);
+    /**
+     * @brief Get reference voltage enable bit in config register group
+     * 
+     * @return true 
+     * @return false 
+     */
     bool cfgGetRefOn();
+    /**
+     * @brief 
+     * 
+     * @return true 
+     * @return false 
+     */
     bool cfgGetSWTENPin() const;
+    /**
+     * @brief Set ADC filter Mode out of the six possible modes.
+     *        Handles setting of MD bits in command and ADCOPT bit in CFGR0w
+     * 
+     * @param mode ADC mode as enum value of type ADCFilterMode
+     */
     void cfgSetADCMode(ADCFilterMode mode);
+    /**
+     * @brief Get ADC filter mode in config register group
+     * 
+     * @return ADC mode as enum value of type ADCFilterMode
+     */
     ADCFilterMode cfgGetADCMode() const;
 
+    /**
+     * @brief Set DCC bits for balancing cells in config register group
+     * 
+     * @param dcc DCC bits as std::bitset<12>
+     */
     template <unsigned int N = 0>
     requires (N < Nodes)
     void cfgSetDCC(std::bitset<12> dcc);
 
+    /**
+     * @brief Get DCC bits for balancing cells in config register group
+     * 
+     * @return DCC bits as std::bitset<12> 
+     */
     template <unsigned int N = 0>
     requires (N < Nodes)
     std::bitset<12> cfgGetDCC() const;
 
+    /**
+     * @brief Get the Cell Voltages as std::array from cell voltage register groups
+     *        read from SPI if first reading after cell conversion or from cache otherwise
+     * 
+     * @tparam N 
+     * @tparam M 
+     * @param voltages std::array to store values
+     * @return true if reading and parsing was successfull
+     * @return false if reading failed
+     */
     template <std::size_t N, unsigned int M = 0>
     //requires (N <= CELLNUM)
     bool getCellVoltages(std::array<float, N> &voltages);
 
+    /**
+     * @brief Get the Aux Voltage of specified channel
+     * 
+     * @tparam N 
+     * @param chg aux channel
+     * @return Voltage as float in Volts 
+     */
     template <unsigned int N = 0>
     float getAuxVoltage(const AuxChannel chg);
 
+    /**
+     * @brief Get the Status Voltage of specified channel
+     * 
+     * @tparam N 
+     * @param chst status channel
+     * @return Voltage as float in Volts 
+     */
     template <unsigned int N = 0>
     float getStatusVoltage(const StatusGroup chst);
 
@@ -549,7 +676,7 @@ class LTC68041 {
      * @brief Helper function to calculate voltages in volt from register values
      *
      * @param value value to parse from registers, from ValueNames enum
-     * @retval value as float in Volt
+     * @return value as float in Volt
      */
     template <unsigned int N = 0>
     requires (N < Nodes)
@@ -571,11 +698,21 @@ class LTC68041 {
         0xd089, 0x1510, 0x1e22, 0xdbbb, 0x0af8, 0xcf61, 0xc453, 0x01ca, 0xd237, 0x17ae, 0x1c9c, 0xd905, 0xfeff, 0x3b66, 0x3054, 0xf5cd, 0x2630, 0xe3a9, 0xe89b,
         0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368, 0x96f1, 0x9dc3, 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095};
 
+    /**
+     * @brief Calculates the CRC sum of 16 bit half word
+     * 
+     * @param data 16 bit half word data
+     * @return crc of "data" as uint16_t  
+     */
     constexpr uint16_t calcPEC15(const uint16_t data) const;
 
-    /*!******************************************************************************************************
-    Calculates the CRC sum of some data bytes given by the array "data"
-    *********************************************************************************************************/
+    /**
+     * @brief Calculates the CRC sum of some data bytes given by the std::array "data"
+     * 
+     * @tparam N 
+     * @param data bytes of data as std::array
+     * @return crc of "data" as uint16_t 
+     */
     template <std::size_t N>
     constexpr uint16_t calcPEC15(const std::array<uint8_t, N> &data) const {
         uint16_t remainder = 16, addr = 0;  // initialize the PEC
@@ -589,16 +726,23 @@ class LTC68041 {
         return (remainder * 2);  // The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
     }
 
+    /**
+     * @brief Execute specified read command on SPI and store data in register group cache
+     * 
+     * @param cmd Command to write on SPI bus
+     * @return true if read successfull (PEC correct)
+     * @return false if read failed (PEC incorrect)
+     */
     bool spi_read_cmd(Commands cmd);
 
+    /**
+     * @brief Execute specified write command with config bit ORed in
+     * 
+     * @param cmd command with option bits ORed in
+     */
     void spi_write_cmd(uint16_t cmd);
 };
 
-/**
- * @brief Creating of the object LTC68041
- *
- * @param pCS Pin used as chip select
- */
 template <std::size_t Nodes>
 LTC68041<Nodes>::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(FSPI), isCacheInvalid(0x3FFFF)
 {
@@ -608,13 +752,6 @@ LTC68041<Nodes>::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), 
         reg.CFGR0w = 0xFE;
 }
 
-/**
- * @brief Initializes the SPI instance used for communication
- *
- * @param pinMOSI Pin used as MOSI
- * @param pinMISO Pin used as MISO
- * @param pinCLK Pin used as SCK
- */
 template <std::size_t Nodes>
 void LTC68041<Nodes>::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinMOSI, OUTPUT);
@@ -625,19 +762,11 @@ void LTC68041<Nodes>::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     SPI_local.begin(pinCLK, pinMISO, pinMOSI, -1);
 }
 
-/**
- * @brief Uninitializes the used SPI instance
- *
- */
 template <std::size_t Nodes>
 void LTC68041<Nodes>::destroySPI() {
     SPI_local.end();
 }
 
-/**
- * @brief Wake isoSPI up from idle state
- *        Generic wakeup commannd to wake isoSPI up out of idle
- */
 template <std::size_t Nodes>
 void LTC68041<Nodes>::wakeup_idle() const {
     digitalWrite(pinCS, LOW);
@@ -645,9 +774,6 @@ void LTC68041<Nodes>::wakeup_idle() const {
     digitalWrite(pinCS, HIGH);
 }
 
-/*!******************************************************************************************************
-Calculates the CRC sum of some data bytes given by the array "data"
-*********************************************************************************************************/
 template <std::size_t Nodes>
 constexpr uint16_t LTC68041<Nodes>::calcPEC15(const uint16_t data) const {
     uint16_t remainder = 16, addr = 0;  // initialize the PEC
@@ -661,12 +787,6 @@ constexpr uint16_t LTC68041<Nodes>::calcPEC15(const uint16_t data) const {
     return (remainder * 2);  // The CRC15 has a 0 in the LSB so the remainder must be multiplied by 2
 }
 
-/*!******************************************************************************************************
-Writes and read a set number of bytes using the SPI port.
-Tested and runs fine
-[in] std::array<uint8_t, N1> &tx_Data array of data to be written on the SPI port
-[out] std::array<uint8_t, N2> &rx_data array that read data will be written too.
-*********************************************************************************************************/
 template <std::size_t Nodes>
 bool LTC68041<Nodes>::spi_read_cmd(Commands cmd) {
     uint16_t pec;
@@ -762,10 +882,6 @@ bool LTC68041<Nodes>::spi_read_cmd(Commands cmd) {
     return pecCorrect;
 }
 
-/*!******************************************************************************************************
-Writes and read a set number of bytes using the SPI port without expecting an answer
-std::array<uint8_t, N> &data //Array of bytes to be written on the SPI port
-*********************************************************************************************************/
 template <std::size_t Nodes>
 void LTC68041<Nodes>::spi_write_cmd(const uint16_t cmd) {
     auto start = millis();
@@ -824,10 +940,6 @@ bool LTC68041<Nodes>::waitForConversion() {
     return ret;
 }
 
-/*!******************************************************************************************************
-calculates the bitpattern in the config for Undervoltage detection
-the config has to be written to the chip after this!
-*********************************************************************************************************/
 template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetVUV(const float Undervoltage) {
     unsigned int VUV = static_cast<unsigned int>(Undervoltage / (0.0001f * 16.0f)) - 1;  // calc bitpattern for UV
@@ -847,10 +959,6 @@ float LTC68041<Nodes>::cfgGetVUV() const {
     return (static_cast<float>(value + 1) * 16.0f * 0.001f);
 }
 
-/*!******************************************************************************************************
-calculates the bitpattern in the config for Overvoltage detection
-the config has to be written to the chip after this!
-*********************************************************************************************************/
 template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetVOV(const float Overvoltage) {
     // float Undervoltage=3.123;
@@ -878,12 +986,6 @@ void LTC68041<Nodes>::cfgSetDischargeTimeout(DischargeTimeout timeout) {
         reg.CFGR[CFGR5 & 0x0F] = (reg.CFGR[CFGR5 & 0x0F] & (~CFG5_DCTO_MSK)) | timeout;
 }
 
-/**
- * @brief Set ADC filter Mode out of the six possible modes.
- *        Handles setting of MD bits in command and ADCOPT bit in CFGR0w
- *
- * @param mode ADC mode as enum value of type ADCFilterMode
- */
 template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
     for (auto &reg : regs) {
