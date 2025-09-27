@@ -145,6 +145,11 @@ float BatteryMonitor::chip_temp() const {
     return _chip_temp;
 }
 
+float battery_current() {
+    _bat->measure_aux();
+    return (_bat->aux_voltage() - 2.5f) * 0.02f;
+}
+
 float BatteryMonitor::soc() const {
     return _soc;
 }
