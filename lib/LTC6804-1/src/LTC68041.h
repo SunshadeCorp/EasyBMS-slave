@@ -402,6 +402,7 @@ class LTC68041 {
     void clrCellRegs();
     void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL);
     void startCellConv(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
+    void startCellSocConv(DischargeCtrl dcp);
     void startCellConvTest(SelfTestMode st);
     void startCellAuxConv(DischargeCtrl dcp);
     void startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL);
@@ -618,7 +619,8 @@ class LTC68041 {
         AXST = 0x0407,
         ADSTAT = 0x0468,
         STATST = 0x040F,
-        ADCVAX = 0X046F,
+        ADCVAX = 0x046F,
+        ADCVSC = 0x0467,
         CLRCELL = 0x0711,
         CLRAUX = 0x0712,
         CLRSTAT = 0x0713,
@@ -894,6 +896,7 @@ void LTC68041<Nodes>::spi_write_cmd(const uint16_t cmd) {
     if ((cmd & Commands::ADCV) == Commands::ADCV ||
         (cmd & Commands::ADAX) == Commands::ADAX ||
         (cmd & Commands::ADCVAX) == Commands::ADCVAX ||
+        (cmd & Commands::ADCVSC) == Commands::ADCVSC ||
         (cmd & Commands::ADSTAT) == Commands::ADSTAT)
         {
             // poll ADC for ongoing conversion
@@ -1233,6 +1236,22 @@ void LTC68041<Nodes>::startCellConv(DischargeCtrl dcp, CellChannel ch) {
     isCacheInvalid[RegGroups::CVBR] = true;
     isCacheInvalid[RegGroups::CVCR] = true;
     isCacheInvalid[RegGroups::CVDR] = true;
+
+    // 3
+    spi_write_cmd(cmd);
+}
+
+template <std::size_t Nodes>
+void LTC68041<Nodes>::startCellSocConv(DischargeCtrl dcp) {
+    uint16_t cmd = ADCVSC;
+    cmd |= md;
+    cmd |= dcp;
+
+    isCacheInvalid[RegGroups::CVAR] = true;
+    isCacheInvalid[RegGroups::CVBR] = true;
+    isCacheInvalid[RegGroups::CVCR] = true;
+    isCacheInvalid[RegGroups::CVDR] = true;
+    isCacheInvalid[RegGroups::STAR] = true;
 
     // 3
     spi_write_cmd(cmd);

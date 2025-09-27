@@ -196,7 +196,7 @@ void LtcMebWrapper::measure_cells() {
     if (_ltc_index != 0)
         return;
 
-    _ltc.startCellConv(LTC68041<ltc_count>::DCP_DISABLED);
+    _ltc.startCellSocConv(LTC68041<ltc_count>::DCP_DISABLED);
 }
 
 void LtcMebWrapper::measure_aux() {

@@ -40,6 +40,7 @@ void BatteryMonitor::set_battery_config(BatteryConfig config) {
 
 void BatteryMonitor::calc_cell_voltages() {
     _cell_voltages = _bat->cell_voltages();
+    _module_voltage = _bat->module_voltage();
 
     _min_voltage = *std::min_element(_cell_voltages.begin(), _cell_voltages.end());
     _max_voltage = *std::max_element(_cell_voltages.begin(), _cell_voltages.end());
@@ -65,7 +66,6 @@ void BatteryMonitor::calc_cell_voltages() {
 }
 void BatteryMonitor::calc_aux_data() {
     _chip_temp = _bat->chip_temp();
-    _module_voltage = _bat->module_voltage();
     _module_temps = _bat->module_temps();
     _pcb_temps = _bat->pcb_temps();
 }
