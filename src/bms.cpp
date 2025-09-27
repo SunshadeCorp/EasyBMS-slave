@@ -65,7 +65,7 @@ void BMS::loop() {
         _last_ltc_check = millis();
         _battery_monitor->measure();
         _battery_monitor->calc_cell_voltages();
-        _battery_monitor->calc_aux_data();
+        _battery_monitor->calc_temps();
 
         if (_balancer) {
             _balancer->balance(_battery_monitor->cell_voltages());

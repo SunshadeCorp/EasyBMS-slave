@@ -199,12 +199,23 @@ void LtcMebWrapper::measure_cells() {
     _ltc.startCellSocConv(LTC68041<ltc_count>::DCP_DISABLED);
 }
 
-void LtcMebWrapper::measure_aux() {
+void LtcMebWrapper::measure_temps() {
     if (_ltc_index != 0)
         return;
 
     _ltc.startAuxConv();
-    _ltc.startStatusConv();
+    _ltc.startStatusConv(LTC68041<ltc_count>::CHST_ITMP);
+}
+
+void LtcMebWrapper::measure_aux() {
+    if (_ltc_index != 0)
+        return;
+
+    if constexpr (ltc_count > 1) {
+        _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1);
+    } else {
+        _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5);
+    }
 }
 
 std::vector<float> LtcMebWrapper::module_temps() {
@@ -213,12 +224,12 @@ std::vector<float> LtcMebWrapper::module_temps() {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1)));
             temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2)));
+            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
             break;
             case 1:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1)));
             temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2)));
+            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
             break;
             default:
             break;
@@ -237,12 +248,12 @@ std::vector<float> LtcMebWrapper::pcb_temps() {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
             temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4)));
+            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5)));
             break;
             case 1:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
             temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4)));
+            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5)));
             break;
             default:
             break;
@@ -296,6 +307,22 @@ std::vector<float> LtcMebWrapper::cell_voltages() {
             return get_cells<8>();
         default:
             return std::vector<float>();
+    }
+}
+
+float LtcMebWrapper::aux_voltage() {
+    if constexpr (ltc_count > 1) {
+        switch (_ltc_index) {
+            case 0:
+            return _ltc.getAuxVoltage<0>(LTC68041<ltc_count>::CHG_GPIO1);
+            case 1:
+            return _ltc.getAuxVoltage<1>(LTC68041<ltc_count>::CHG_GPIO1);
+            default:
+            return NAN;
+            break;
+        }
+    } else {
+        return _ltc.getAuxVoltage(LTC68041<ltc_count>::CHG_GPIO5);
     }
 }
 

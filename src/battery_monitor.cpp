@@ -64,7 +64,7 @@ void BatteryMonitor::calc_cell_voltages() {
         _measure_error_count++;
     }
 }
-void BatteryMonitor::calc_aux_data() {
+void BatteryMonitor::calc_temps() {
     _chip_temp = _bat->chip_temp();
     _module_temps = _bat->module_temps();
     _pcb_temps = _bat->pcb_temps();
@@ -103,7 +103,7 @@ void BatteryMonitor::set_balance_bits(const std::vector<bool>& balance_bits) {
 
 void BatteryMonitor::measure() {
     _bat->measure_cells();
-    _bat->measure_aux();
+    _bat->measure_temps();
 }
 
 uint32_t BatteryMonitor::measure_error_count() const {

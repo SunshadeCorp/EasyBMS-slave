@@ -20,12 +20,14 @@ class LtcMebWrapper : public BatteryInterface {
     void set_balance_bits(const std::vector<bool> &balance_bits) override;
     std::vector<bool> get_balance_bits() override;
     void measure_cells() override;
+    void measure_temps() override;
     void measure_aux() override;
     std::vector<float> module_temps() override;
     std::vector<float> pcb_temps() override;
     float chip_temp() override;
     float module_voltage() override;
     std::vector<float> cell_voltages() override;
+    float aux_voltage() override;
     bool balance_error() override;
     bool measure_error() override;
 

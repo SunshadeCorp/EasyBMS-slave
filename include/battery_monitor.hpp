@@ -16,7 +16,7 @@ class BatteryMonitor {
     void set_balance_bits(const std::vector<bool>& balance_bits);
     void measure();
     void calc_cell_voltages();
-    void calc_aux_data();
+    void calc_temps();
     const std::vector<float>& cell_voltages() const;
     std::vector<bool> balance_bits() const;
     void set_battery_config(BatteryConfig config);
@@ -30,6 +30,7 @@ class BatteryMonitor {
     const std::vector<float>& module_temps() const;
     const std::vector<float>& pcb_temps() const;
     float chip_temp() const;
+    float battery_current();
     float soc() const;
     uint32_t measure_error_count() const;
     uint32_t balance_error_count() const;
