@@ -1506,12 +1506,12 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
     auto cell = cells.cbegin();
     auto rcell = cells.crbegin();
 
-    for (auto it = voltages.begin(); it < (voltages.cbegin() + ((N / 2) - 1)); it++) {
+    for (auto it = voltages.begin(); it < (voltages.cbegin() + (N / 2)); it++) {
         *it = parseVoltage<M>(*cell);
         cell++;
     }
 
-    for (auto it = voltages.rbegin(); it < (voltages.crbegin() + ((N / 2) - 1)); it++) {
+    for (auto it = voltages.rbegin(); it < (voltages.crbegin() + (N / 2)); it++) {
         *it = parseVoltage<M>(*rcell);
         rcell++;
     }
