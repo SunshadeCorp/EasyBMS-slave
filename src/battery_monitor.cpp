@@ -39,6 +39,7 @@ void BatteryMonitor::set_battery_config(BatteryConfig config) {
 }
 
 void BatteryMonitor::calc_cell_voltages() {
+    _bat->measure_cells();
     _cell_voltages = _bat->cell_voltages();
     _module_voltage = _bat->module_voltage();
 
@@ -65,6 +66,7 @@ void BatteryMonitor::calc_cell_voltages() {
     }
 }
 void BatteryMonitor::calc_temps() {
+    _bat->measure_temps();
     _chip_temp = _bat->chip_temp();
     _module_temps = _bat->module_temps();
     _pcb_temps = _bat->pcb_temps();
@@ -99,11 +101,6 @@ void BatteryMonitor::set_balance_bits(const std::vector<bool>& balance_bits) {
     if (_balance_error) {
         _balance_error_count++;
     }
-}
-
-void BatteryMonitor::measure() {
-    _bat->measure_cells();
-    _bat->measure_temps();
 }
 
 uint32_t BatteryMonitor::measure_error_count() const {
@@ -145,7 +142,7 @@ float BatteryMonitor::chip_temp() const {
     return _chip_temp;
 }
 
-float battery_current() {
+float BatteryMonitor::battery_current() const {
     _bat->measure_aux();
     return (_bat->aux_voltage() - 2.5f) * 0.02f;
 }

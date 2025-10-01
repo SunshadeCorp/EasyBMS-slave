@@ -14,7 +14,6 @@ class BatteryMonitor {
    public:
     BatteryMonitor(const std::shared_ptr<BatteryInterface> &bat);
     void set_balance_bits(const std::vector<bool>& balance_bits);
-    void measure();
     void calc_cell_voltages();
     void calc_temps();
     const std::vector<float>& cell_voltages() const;
@@ -30,7 +29,7 @@ class BatteryMonitor {
     const std::vector<float>& module_temps() const;
     const std::vector<float>& pcb_temps() const;
     float chip_temp() const;
-    float battery_current();
+    float battery_current() const;
     float soc() const;
     uint32_t measure_error_count() const;
     uint32_t balance_error_count() const;

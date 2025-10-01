@@ -8,7 +8,6 @@ BMS::BMS() :
     _mode(BalanceMode::none),
     _balancer{},
     _battery_monitor{},
-    _display{},
     _led_builtin_state{false},
     _last_ltc_check{0}
 {
@@ -48,8 +47,8 @@ void BMS::set_balancer(const std::shared_ptr<IBalancer> &balancer) {
     _balancer = balancer;
 }
 
- void BMS::set_display(const std::shared_ptr<Display> &display) {
-     _display = display;
+void BMS::set_display(const std::shared_ptr<Display> &display) {
+    _display = display;
 }
 
 void BMS::set_battery_monitor(const std::shared_ptr<BatteryMonitor> &battery_monitor) {
@@ -63,7 +62,6 @@ std::shared_ptr<const BatteryMonitor> BMS::battery_monitor() {
 void BMS::loop() {
     if (millis() - _last_ltc_check > LTC_CHECK_INTERVAL) {
         _last_ltc_check = millis();
-        _battery_monitor->measure();
         _battery_monitor->calc_cell_voltages();
         _battery_monitor->calc_temps();
 

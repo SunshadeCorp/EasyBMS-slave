@@ -178,7 +178,7 @@ void MqttAdapter::publish(const String &topic) {
     _mqtt->publish(topic + "/pcb_temps", tmp);
     _mqtt->publish(topic + "/chip_temp", m->chip_temp());
     _mqtt->publish(topic + "/battery_type", as_string(m->battery_type()));
-    _mqtt->publish(topic + "/battery_current", String(m->battery_current(), 3));
+    _mqtt->publish(topic + "/battery_current", m->battery_current());
 }
 
 void MqttAdapter::update() {
