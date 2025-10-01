@@ -673,6 +673,7 @@ class LTC68041 {
     byte pinCS;  // ChipSelectPin
     std::array<Registers, Nodes> regs;
     std::bitset<10> isCacheInvalid;
+    bool pollADC;
 
     /**
      * @brief Helper function to calculate voltages in volt from register values
@@ -746,7 +747,7 @@ class LTC68041 {
 };
 
 template <std::size_t Nodes>
-LTC68041<Nodes>::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(FSPI), isCacheInvalid(0x3FFFF)
+LTC68041<Nodes>::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), md(MD_NORMAL), pinCS(pCS), regs({}), SPI_local(FSPI), isCacheInvalid(0x3FFFF), pollADC{false}
 {
     DEBUG_PRINT("Objekt angelegt");
 
@@ -772,7 +773,7 @@ void LTC68041<Nodes>::destroySPI() {
 template <std::size_t Nodes>
 void LTC68041<Nodes>::wakeup_idle() const {
     digitalWrite(pinCS, LOW);
-    delayMicroseconds(2);  // Guarantees the isoSPI will be in ready mode
+    delayMicroseconds(500);  // Guarantees the isoSPI will be in ready mode
     digitalWrite(pinCS, HIGH);
 }
 
@@ -811,17 +812,30 @@ bool LTC68041<Nodes>::spi_read_cmd(Commands cmd) {
     case RDAUXB:
     case RDSTATA:
     case RDSTATB:
+        if (!pollADC)
+            break;
+        
         // poll ADC for ongoing conversion
         SPI_local.transfer16(PLADC);
         SPI_local.transfer16(calcPEC15(PLADC));
 
-        while (SPI_local.transfer(0xFF) == 0)
+        // PLADC response status is valid after N = number of Nodes clock cycles, so dump bytes that are partially valid
+        for(int i = 0; i < ((Nodes / 8) + 1); i++)
+            SPI_local.transfer(0xFF);
+
+        while (SPI_local.transfer(0xFF) == 0x00) {
             if((millis() - start) > 1000) {
                 digitalWrite(pinCS, HIGH);
                 SPI_local.endTransaction();
                 return false;
             }
+            }
 
+        digitalWrite(pinCS, HIGH);
+        delayMicroseconds(2);  // toggle CS between commands
+        digitalWrite(pinCS, LOW);
+
+        pollADC = false;
         break;
     default:
         break;
@@ -899,15 +913,28 @@ void LTC68041<Nodes>::spi_write_cmd(const uint16_t cmd) {
         (cmd & Commands::ADCVSC) == Commands::ADCVSC ||
         (cmd & Commands::ADSTAT) == Commands::ADSTAT)
         {
+        if (pollADC) {
             // poll ADC for ongoing conversion
             SPI_local.transfer16(PLADC);
             SPI_local.transfer16(calcPEC15(PLADC));
 
-            while (SPI_local.transfer(0xFF) == 0)
+            // PLADC response status is valid after N = number of Nodes clock cycles, so dump bytes that are partially valid
+            for(int i = 0; i < ((Nodes / 8) + 1); i++)
+                SPI_local.transfer(0xFF);
+
+            while (SPI_local.transfer(0xFF) == 0x00) {
                 if((millis() - start) > 1000) {
                     digitalWrite(pinCS, HIGH);
                     SPI_local.endTransaction();
                     return;
+                }
+            }
+
+            digitalWrite(pinCS, HIGH);
+            delayMicroseconds(2);  // toggle CS between commands
+            digitalWrite(pinCS, LOW);
+        } else {
+            pollADC = true;
                 }
         }
 
@@ -931,10 +958,15 @@ bool LTC68041<Nodes>::waitForConversion() {
     SPI_local.transfer16(PLADC);
     SPI_local.transfer16(calcPEC15(PLADC));
 
-    while (SPI_local.transfer(0xFF) == 0)
+    // PLADC response status is valid after N = number of Nodes clock cycles, so dump bytes that are partially valid
+    for(int i = 0; i < ((Nodes / 8) + 1); i++)
+        SPI_local.transfer(0xFF);
+
+    while (SPI_local.transfer(0xFF) == 0x00) {
         if((millis() - start) > 1000) {
             ret = false;
             break;
+        }
         }
 
     digitalWrite(pinCS, HIGH);
