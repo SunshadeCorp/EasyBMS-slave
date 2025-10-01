@@ -128,7 +128,9 @@ void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
     }
 
     _ltc.cfgWrite();
-    _ltc.cfgRead();
+
+    if(_balance_error = !_ltc.cfgRead())
+        return;
 
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
