@@ -21,7 +21,7 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 
 [[maybe_unused]] void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(6, OUTPUT); // SCLK
+    // pinMode(D1, OUTPUT); // LED1
     digitalWrite(LED_BUILTIN, false);
 
     DEBUG_BEGIN(74880);
