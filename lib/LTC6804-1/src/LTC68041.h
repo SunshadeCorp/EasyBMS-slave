@@ -1171,8 +1171,6 @@ bool LTC68041<Nodes>::cfgRead() {
 
     ret = spi_read_cmd(RDCFG);
 
-    DEBUG_PRINTLN();
-
     for (auto &reg : regs) {
         reg.CFGR0r = reg.CFGR[CFGR0 & 0x0F];
 
@@ -1419,61 +1417,88 @@ template <std::size_t N, unsigned int M>
 //requires (N <= LTC68041<Nodes>::CELLNUM)
 bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
     static constexpr std::array<ValueNames, CELLNUM> cells = {C1V, C2V, C3V, C4V, C5V, C6V, C7V, C8V, C9V, C10V, C11V, C12V};
+#if DEBUG
+    static bool dbgPrint = false;
+#endif
 
-    if(isCacheInvalid[RegGroups::CVAR])
-        if (!spi_read_cmd(RDCVA))
+    DEBUG_PRINT("Node: ");
+    DEBUG_PRINTLN(M);
+    DEBUG_PRINTLN("===============================");
+
+    if(isCacheInvalid[RegGroups::CVAR]) {
+        if (!spi_read_cmd(RDCVA)) {
             return false;
-        else
+        } else {
             isCacheInvalid[RegGroups::CVAR] = false;
 
-    if(isCacheInvalid[RegGroups::CVBR])
-        if (!spi_read_cmd(RDCVB))
+            DEBUG_PRINT("Cell Voltage Register Group A: ");
+
+            for (const auto &element : regs[M].CVAR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
+    }
+
+    if(isCacheInvalid[RegGroups::CVBR]) {
+        if (!spi_read_cmd(RDCVB)) {
             return false;
-        else
+        } else {
             isCacheInvalid[RegGroups::CVBR] = false;
 
-    if(isCacheInvalid[RegGroups::CVCR])
-        if (!spi_read_cmd(RDCVC))
+            DEBUG_PRINT("Cell Voltage Register Group B: ");
+
+            for (const auto &element : regs[M].CVBR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
+    }
+
+    if(isCacheInvalid[RegGroups::CVCR]) {
+        if (!spi_read_cmd(RDCVC)) {
             return false;
-        else
+        } else {
             isCacheInvalid[RegGroups::CVCR] = false;
 
-    if(isCacheInvalid[RegGroups::CVDR])
-        if (!spi_read_cmd(RDCVD))
+            DEBUG_PRINT("Cell Voltage Register Group C: ");
+
+            for (const auto &element : regs[M].CVCR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
+    }
+
+    if(isCacheInvalid[RegGroups::CVDR]) {
+        if (!spi_read_cmd(RDCVD)) {
             return false;
-        else
+        } else {
             isCacheInvalid[RegGroups::CVDR] = false;
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Cell Voltage Register Group A: ");
+            DEBUG_PRINT("Cell Voltage Register Group D: ");
 
-    for (const auto &element : regs[M].CVAR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
-    }
+            for (const auto &element : regs[M].CVDR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Cell Voltage Register Group B: ");
-
-    for (const auto &element : regs[M].CVBR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
-    }
-
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Cell Voltage Register Group C: ");
-
-    for (const auto &element : regs[M].CVCR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
-    }
-
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Cell Voltage Register Group D: ");
-
-    for (const auto &element : regs[M].CVDR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
     }
 
     DEBUG_PRINTLN();
@@ -1491,22 +1516,27 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
         rcell++;
     }
 
-    DEBUG_PRINTLN("Cell Voltages: ");
-#if N == 12
-    DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8  Cell 9  Cell 10 Cell 11 Cell 12");
-#elif N == 8
-    DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8");
-#elif N == 6
-    DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6");
-#endif
+#if DEBUG
+    if (dbgPrint) {
+        dbgPrint = false;
+        DEBUG_PRINTLN("Cell Voltages: ");
 
-    for (const auto &element : voltages) {
-        DEBUG_PRINT(element);
-        DEBUG_PRINT(" V");
-        DEBUG_PRINT("  ");
+        if constexpr (N == 12)
+            DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8  Cell 9  Cell 10 Cell 11 Cell 12");
+        else if constexpr (N == 8)
+            DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6  Cell 7  Cell 8");
+        else if constexpr (N == 6)
+            DEBUG_PRINTLN("Cell 1  Cell 2  Cell 3  Cell 4  Cell 5  Cell 6");
+
+        for (const auto &element : voltages) {
+            DEBUG_PRINT(element);
+            DEBUG_PRINT(" V");
+            DEBUG_PRINT("  ");
+        }
+
+        DEBUG_PRINTLN();
     }
-
-    DEBUG_PRINTLN();
+#endif
 
     return true;
 }
@@ -1527,55 +1557,76 @@ and store the gpio voltages in aux_codes variable
 template <std::size_t Nodes>
 template <unsigned int N>
 float LTC68041<Nodes>::getAuxVoltage(const AuxChannel chg) {
-    if(isCacheInvalid[RegGroups::AVAR])
-        if (!spi_read_cmd(RDAUXA))
+#if DEBUG
+    static bool dbgPrint = false;
+#endif
+
+    DEBUG_PRINT("Node: ");
+    DEBUG_PRINTLN(N);
+    DEBUG_PRINTLN("===============================");
+
+    if(isCacheInvalid[RegGroups::AVAR]) {
+        if (!spi_read_cmd(RDAUXA)) {
             return NAN;
-        else
+        } else {
             isCacheInvalid[RegGroups::AVAR] = false;
 
-    if(isCacheInvalid[RegGroups::AVBR])
-        if (!spi_read_cmd(RDAUXB))
-            return NAN;
-        else
-            isCacheInvalid[RegGroups::AVBR] = false;
+            DEBUG_PRINT("Auxiliary Register Group A: ");
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Auxiliary Register Group A: ");
+            for (const auto &element : regs[N].AVAR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
 
-    for (const auto &element : regs[N].AVAR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
     }
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Auxiliary Register Group B: ");
+    if(isCacheInvalid[RegGroups::AVBR]) {
+        if (!spi_read_cmd(RDAUXB)) {
+            return NAN;
+        } else {
+            isCacheInvalid[RegGroups::AVBR] = false;
 
-    for (const auto &element : regs[N].AVBR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
+            DEBUG_PRINT("Auxiliary Register Group B: ");
+
+            for (const auto &element : regs[N].AVBR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
     }
 
     DEBUG_PRINTLN();
 #if DEBUG
-    std::array<float, AUXNUM> auxVoltage{};  // Voltage of GPIOs and VREF2 in Volt
+    if (dbgPrint) {
+        dbgPrint = false;
+        std::array<float, AUXNUM> auxVoltage{};  // Voltage of GPIOs and VREF2 in Volt
 
-    auxVoltage[0] = parseVoltage<N>(G1V);
-    auxVoltage[1] = parseVoltage<N>(G2V);
-    auxVoltage[2] = parseVoltage<N>(G3V);
-    auxVoltage[3] = parseVoltage<N>(G4V);
-    auxVoltage[4] = parseVoltage<N>(G5V);
-    auxVoltage[5] = parseVoltage<N>(REF);
+        auxVoltage[0] = parseVoltage<N>(G1V);
+        auxVoltage[1] = parseVoltage<N>(G2V);
+        auxVoltage[2] = parseVoltage<N>(G3V);
+        auxVoltage[3] = parseVoltage<N>(G4V);
+        auxVoltage[4] = parseVoltage<N>(G5V);
+        auxVoltage[5] = parseVoltage<N>(REF);
 
-    DEBUG_PRINTLN("Auxiliary Voltages: ");
-    DEBUG_PRINTLN("GPIO1   GPIO2   GPIO3   GPIO4   GPIO5   Vref2");
+        DEBUG_PRINTLN("Auxiliary Voltages: ");
+        DEBUG_PRINTLN("GPIO1   GPIO2   GPIO3   GPIO4   GPIO5   Vref2");
 
-    for (const auto &element : auxVoltage) {
-        DEBUG_PRINT(element);
-        DEBUG_PRINT(" V");
-        DEBUG_PRINT("  ");
+        for (const auto &element : auxVoltage) {
+            DEBUG_PRINT(element);
+            DEBUG_PRINT(" V");
+            DEBUG_PRINT("  ");
+        }
+
+        DEBUG_PRINTLN();
     }
-
-    DEBUG_PRINTLN();
 #endif
 
     switch (chg) {
@@ -1613,66 +1664,89 @@ This function sends the read commands, parses the data and stores the response i
 template <std::size_t Nodes>
 template <unsigned int N>
 float LTC68041<Nodes>::getStatusVoltage(const StatusGroup chst) {
-    if(isCacheInvalid[RegGroups::STAR])
-        if (!spi_read_cmd(RDSTATA))
+#if DEBUG
+    static bool dbgPrint = false;
+#endif
+
+    DEBUG_PRINT("Node: ");
+    DEBUG_PRINTLN(N);
+    DEBUG_PRINTLN("===============================");
+
+    if(isCacheInvalid[RegGroups::STAR]) {
+        if (!spi_read_cmd(RDSTATA)) {
             return NAN;
-        else
+        } else {
             isCacheInvalid[RegGroups::STAR] = false;
 
-    if(isCacheInvalid[RegGroups::STBR])
-        if (!spi_read_cmd(RDSTATB))
+            DEBUG_PRINT("RSP Status Register Group A: ");
+
+            for (const auto &element : regs[N].STAR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
+    }
+
+    if (isCacheInvalid[RegGroups::STBR]) {
+        if (!spi_read_cmd(RDSTATB)) {
             return NAN;
-        else
+        } else {
             isCacheInvalid[RegGroups::STBR] = false;
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("RSP Status Register Group A: ");
+            DEBUG_PRINT("RSP Status Register Group B: ");
 
-    for (const auto &element : regs[N].STAR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
+            for (const auto &element : regs[N].STBR) {
+                DEBUG_PRINT(element, HEX);
+                DEBUG_PRINT(" ");
+            }
+
+#if DEBUG
+            dbgPrint = true;
+#endif
+        }
     }
 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("RSP Status Register Group B: ");
+#if DEBUG
+    if (dbgPrint) {
+        dbgPrint = false;
+        DEBUG_PRINTLN();
+        DEBUG_PRINT("Internal Temperature: ");
+        DEBUG_PRINT((parseVoltage<N>(ITMP) / 7.5E-3f - 273.0f) + offsetTemp);
+        DEBUG_PRINTLN(" °C");
 
-    for (const auto &element : regs[N].STBR) {
-        DEBUG_PRINT(element, HEX);
-        DEBUG_PRINT(" ");
+        DEBUG_PRINT("Sum of all Cells Voltage: ");
+        DEBUG_PRINT(parseVoltage<N>(SC) * 20.0f);
+        DEBUG_PRINTLN(" V");
+
+        DEBUG_PRINT("Analog Supply Voltage: ");
+        DEBUG_PRINT(parseVoltage<N>(VA));
+        DEBUG_PRINTLN(" V");
+
+        DEBUG_PRINT("Digital Supply Voltage: ");
+        DEBUG_PRINT(parseVoltage<N>(VD));
+        DEBUG_PRINTLN(" V");
+
+        DEBUG_PRINT("Overvoltageflags: ");
+        DEBUG_PRINTLN(getStatusOverVoltageFlags<N>().to_ulong(), BIN);
+
+        DEBUG_PRINT("Undervoltageflags: ");
+        DEBUG_PRINTLN(getStatusUnderVoltageFlags<N>().to_ulong(), BIN);
+
+        DEBUG_PRINT("Chip Revision: ");
+        DEBUG_PRINTLN(getStatusRevision<N>(), DEC);
+
+        DEBUG_PRINT("Muxfail: ");
+        DEBUG_PRINTLN(getStatusMUXFail<N>());
+
+        DEBUG_PRINT("Thermalshutdown: ");
+        DEBUG_PRINTLN(getStatusThermalShutdown<N>());
+        DEBUG_PRINTLN();
     }
-
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("Internal Temperature: ");
-    DEBUG_PRINT((parseVoltage<N>(ITMP) / 7.5E-3f - 273.0f) + offsetTemp);
-    DEBUG_PRINTLN(" °C");
-
-    DEBUG_PRINT("Sum of all Cells Voltage: ");
-    DEBUG_PRINT(parseVoltage<N>(SC) * 20.0f);
-    DEBUG_PRINTLN(" V");
-
-    DEBUG_PRINT("Analog Supply Voltage: ");
-    DEBUG_PRINT(parseVoltage<N>(VA));
-    DEBUG_PRINTLN(" V");
-
-    DEBUG_PRINT("Digital Supply Voltage: ");
-    DEBUG_PRINT(parseVoltage<N>(VD));
-    DEBUG_PRINTLN(" V");
-
-    DEBUG_PRINT("Overvoltageflags: ");
-    DEBUG_PRINTLN(getStatusOverVoltageFlags<N>().to_ulong(), BIN);
-
-    DEBUG_PRINT("Undervoltageflags: ");
-    DEBUG_PRINTLN(getStatusUnderVoltageFlags<N>().to_ulong(), BIN);
-
-    DEBUG_PRINT("Chip Revision: ");
-    DEBUG_PRINTLN(getStatusRevision<N>(), DEC);
-
-    DEBUG_PRINT("Muxfail: ");
-    DEBUG_PRINTLN(getStatusMUXFail<N>());
-
-    DEBUG_PRINT("Thermalshutdown: ");
-    DEBUG_PRINTLN(getStatusThermalShutdown<N>());
-    DEBUG_PRINTLN();
+#endif
 
     switch (chst) {
         case StatusGroup::CHST_SOC:
