@@ -105,11 +105,11 @@ void MqttAdapter::loop() {
         reconnect();
     }
 
-    _last_connection = millis();
-    _mqtt->loop();
-
     _bms->loop();
     update();
+
+    _last_connection = millis();
+    _mqtt->loop();
 }
 
 void MqttAdapter::reset_balancing(size_t size) {
