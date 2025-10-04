@@ -110,4 +110,6 @@ void loop() {
             if (bms)
                 bms->loop();
     }
+
+    delay(100);
 }

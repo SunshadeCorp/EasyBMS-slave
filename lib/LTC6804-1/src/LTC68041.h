@@ -100,6 +100,8 @@ class LTC68041 {
         BANDWIDTH_27KHZ = FAST,
         BANDWIDTH_7KHZ = NORMAL,
         BANDWIDTH_26HZ = FILTERED,
+        BANDWIDTH_1KHZ,
+        BANDWIDTH_422HZ,
         BANDWIDTH_14KHZ,
         BANDWIDTH_3KHZ,
         BANDWIDTH_2KHZ,
@@ -400,12 +402,12 @@ class LTC68041 {
 
     void clrAuxRegs();
     void clrCellRegs();
-    void startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL);
-    void startCellConv(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
-    void startCellSocConv(DischargeCtrl dcp);
+    unsigned long startAuxConv(AuxChannel chg = AuxChannel::CHG_ALL);
+    unsigned long startCellConv(DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
+    unsigned long startCellSocConv(DischargeCtrl dcp);
     void startCellConvTest(SelfTestMode st);
-    void startCellAuxConv(DischargeCtrl dcp);
-    void startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL);
+    unsigned long startCellAuxConv(DischargeCtrl dcp);
+    unsigned long startStatusConv(StatusGroup chst = StatusGroup::CHST_ALL);
     void startOpenWireCheck(PUPCtrl pup, DischargeCtrl dcp, CellChannel ch = CellChannel::CH_ALL);
 
    private:
@@ -638,11 +640,13 @@ class LTC68041 {
      * |--|------|---------------------|-----------------------|
      * |  |      | ADCOPT(CFGR0[0]) = 0| ADCOPT(CFGR0[0]) = 1  |
      * |--|------|---------------------|-----------------------|
+     * |00|0     | 422Hz Mode          | 1khz Mode             |
      * |01| 1    | 27kHz Mode (Fast)   | 14kHz Mode            |
      * |10| 2    | 7kHz Mode (Normal)  | 3kHz Mode             |
      * |11| 3    | 26Hz Mode (Filtered)| 2kHz Mode             |
      */
     enum ADCMode : uint16_t {
+        MD_OPT = (0b00 << MDPos),
         MD_FAST = (0b01 << MDPos),
         MD_NORMAL = (0b10 << MDPos),
         MD_FILTERED = (0b11 << MDPos),
@@ -1025,6 +1029,10 @@ template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
     for (auto &reg : regs) {
         switch (mode) {
+            case ADCFilterMode::BANDWIDTH_422HZ:
+                md = MD_OPT;
+                reg.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
+                break;
             case ADCFilterMode::BANDWIDTH_27KHZ:
                 md = MD_FAST;
                 reg.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
@@ -1036,6 +1044,10 @@ void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
             case ADCFilterMode::BANDWIDTH_26HZ:
                 md = MD_FILTERED;
                 reg.CFGR0w &= ~(1 << CFGR0_ADCOPT_Pos);
+                break;
+            case ADCFilterMode::BANDWIDTH_1KHZ:
+                md = MD_OPT;
+                reg.CFGR0w = (reg.CFGR0w & (~CFG0_ADCOPT_MSK)) | (1 << CFGR0_ADCOPT_Pos);
                 break;
             case ADCFilterMode::BANDWIDTH_14KHZ:
                 md = MD_FAST;
@@ -1052,6 +1064,38 @@ void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
             default:
                 break;
         }
+    }
+}
+
+template <std::size_t Nodes>
+LTC68041<Nodes>::ADCFilterMode LTC68041<Nodes>::cfgGetADCMode() const {
+    switch (md) {
+        case MD_OPT:
+            if (regs[0].CFGR0r & CFG0_ADCOPT_MSK) {
+                return ADCFilterMode::BANDWIDTH_1KHZ;
+            } else {
+                return ADCFilterMode::BANDWIDTH_422HZ;
+            }
+        case MD_FAST:
+            if (regs[0].CFGR0r & CFG0_ADCOPT_MSK) {
+                return ADCFilterMode::BANDWIDTH_14KHZ;
+            } else {
+                return ADCFilterMode::BANDWIDTH_27KHZ;
+            }
+        case MD_NORMAL:
+            if (regs[0].CFGR0r & CFG0_ADCOPT_MSK) {
+                return ADCFilterMode::BANDWIDTH_3KHZ;
+            } else {
+                return ADCFilterMode::BANDWIDTH_7KHZ;
+            }
+        case MD_FILTERED:
+            if (regs[0].CFGR0r & CFG0_ADCOPT_MSK) {
+                return ADCFilterMode::BANDWIDTH_2KHZ;
+            } else {
+                return ADCFilterMode::BANDWIDTH_26HZ;
+            }
+        default:
+            return ADCFilterMode::NORMAL;
     }
 }
 
@@ -1256,7 +1300,7 @@ bool LTC68041<Nodes>::checkSPI() {
   DCP  Determines if Discharge is Permitted
 *********************************************************************************************************/
 template <std::size_t Nodes>
-void LTC68041<Nodes>::startCellConv(DischargeCtrl dcp, CellChannel ch) {
+unsigned long LTC68041<Nodes>::startCellConv(DischargeCtrl dcp, CellChannel ch) {
     uint16_t cmd = ADCV;
     cmd |= md;
     cmd |= dcp;
@@ -1269,10 +1313,58 @@ void LTC68041<Nodes>::startCellConv(DischargeCtrl dcp, CellChannel ch) {
 
     // 3
     spi_write_cmd(cmd);
+
+    switch (cfgGetADCMode()) {
+        case ADCFilterMode::BANDWIDTH_27KHZ:
+        case ADCFilterMode::BANDWIDTH_14KHZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 1;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_7KHZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 2;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_3KHZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 3;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_2KHZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 4;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_1KHZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 7;
+            } else {
+                return 1;
+            }
+        case ADCFilterMode::BANDWIDTH_422HZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 12;
+            } else {
+                return 2;
+            }
+        case ADCFilterMode::BANDWIDTH_26HZ:
+            if (ch == CellChannel::CH_ALL) {
+                return 200;
+            } else {
+                return 33;
+            }
+        default:
+            return 0;
+    }
 }
 
 template <std::size_t Nodes>
-void LTC68041<Nodes>::startCellSocConv(DischargeCtrl dcp) {
+unsigned long LTC68041<Nodes>::startCellSocConv(DischargeCtrl dcp) {
     uint16_t cmd = ADCVSC;
     cmd |= md;
     cmd |= dcp;
@@ -1285,6 +1377,26 @@ void LTC68041<Nodes>::startCellSocConv(DischargeCtrl dcp) {
 
     // 3
     spi_write_cmd(cmd);
+
+    switch (cfgGetADCMode()) {
+        case ADCFilterMode::BANDWIDTH_27KHZ:
+        case ADCFilterMode::BANDWIDTH_14KHZ:
+            return 1;
+        case ADCFilterMode::BANDWIDTH_7KHZ:
+            return 2;
+        case ADCFilterMode::BANDWIDTH_3KHZ:
+            return 3;
+        case ADCFilterMode::BANDWIDTH_2KHZ:
+            return 5;
+        case ADCFilterMode::BANDWIDTH_1KHZ:
+            return 8;
+        case ADCFilterMode::BANDWIDTH_422HZ:
+            return 14;
+        case ADCFilterMode::BANDWIDTH_26HZ:
+            return 234;
+        default:
+            return 0;
+    }
 }
 
 /*!******************************************************************************************************
@@ -1308,7 +1420,7 @@ void LTC68041<Nodes>::startCellConvTest(SelfTestMode st) {
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
 template <std::size_t Nodes>
-void LTC68041<Nodes>::startAuxConv(AuxChannel chg) {
+unsigned long LTC68041<Nodes>::startAuxConv(AuxChannel chg) {
     uint16_t cmd = ADAX;
     cmd |= md;
     cmd |= chg;
@@ -1317,6 +1429,54 @@ void LTC68041<Nodes>::startAuxConv(AuxChannel chg) {
     isCacheInvalid[RegGroups::AVBR] = true;
 
     spi_write_cmd(cmd);
+
+    switch (cfgGetADCMode()) {
+        case ADCFilterMode::BANDWIDTH_27KHZ:
+        case ADCFilterMode::BANDWIDTH_14KHZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 1;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_7KHZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 2;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_3KHZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 3;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_2KHZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 4;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_1KHZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 7;
+            } else {
+                return 1;
+            }
+        case ADCFilterMode::BANDWIDTH_422HZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 12;
+            } else {
+                return 2;
+            }
+        case ADCFilterMode::BANDWIDTH_26HZ:
+            if (chg == AuxChannel::CHG_ALL) {
+                return 200;
+            } else {
+                return 33;
+            }
+        default:
+            return 0;
+    }
 }
 
 /*!*******************************************************************************************************
@@ -1327,7 +1487,7 @@ void LTC68041<Nodes>::startAuxConv(AuxChannel chg) {
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
 template <std::size_t Nodes>
-void LTC68041<Nodes>::startCellAuxConv(DischargeCtrl dcp) {
+unsigned long LTC68041<Nodes>::startCellAuxConv(DischargeCtrl dcp) {
     uint16_t cmd = ADCVAX;
     cmd |= md;
     cmd |= dcp;
@@ -1339,6 +1499,26 @@ void LTC68041<Nodes>::startCellAuxConv(DischargeCtrl dcp) {
     isCacheInvalid[RegGroups::AVAR] = true;
 
     spi_write_cmd(cmd);
+
+    switch (cfgGetADCMode()) {
+        case ADCFilterMode::BANDWIDTH_27KHZ:
+        case ADCFilterMode::BANDWIDTH_14KHZ:
+            return 1;
+        case ADCFilterMode::BANDWIDTH_7KHZ:
+            return 3;
+        case ADCFilterMode::BANDWIDTH_3KHZ:
+            return 4;
+        case ADCFilterMode::BANDWIDTH_2KHZ:
+            return 5;
+        case ADCFilterMode::BANDWIDTH_1KHZ:
+            return 9;
+        case ADCFilterMode::BANDWIDTH_422HZ:
+            return 17;
+        case ADCFilterMode::BANDWIDTH_26HZ:
+            return 268;
+        default:
+            return 0;
+    }
 }
 
 /*!*******************************************************************************************************
@@ -1349,7 +1529,7 @@ void LTC68041<Nodes>::startCellAuxConv(DischargeCtrl dcp) {
   3. send broadcast adax command to LTC6804
 *********************************************************************************************************/
 template <std::size_t Nodes>
-void LTC68041<Nodes>::startStatusConv(StatusGroup chst) {
+unsigned long LTC68041<Nodes>::startStatusConv(StatusGroup chst) {
     uint16_t cmd = ADSTAT;
     cmd |= md;
     cmd |= chst;
@@ -1358,6 +1538,49 @@ void LTC68041<Nodes>::startStatusConv(StatusGroup chst) {
     isCacheInvalid[RegGroups::STBR] = true;
 
     spi_write_cmd(cmd);
+
+    switch (cfgGetADCMode()) {
+        case ADCFilterMode::BANDWIDTH_27KHZ:
+        case ADCFilterMode::BANDWIDTH_14KHZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 0;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_7KHZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 1;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_3KHZ:
+        case ADCFilterMode::BANDWIDTH_2KHZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 2;
+            } else {
+                return 0;
+            }
+        case ADCFilterMode::BANDWIDTH_1KHZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 4;
+            } else {
+                return 1;
+            }
+        case ADCFilterMode::BANDWIDTH_422HZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 8;
+            } else {
+                return 2;
+            }
+        case ADCFilterMode::BANDWIDTH_26HZ:
+            if (chst == StatusGroup::CHST_ALL) {
+                return 134;
+            } else {
+                return 33;
+            }
+        default:
+            return 0;
+    }
 }
 
 /*!*******************************************************************************************************

@@ -26,6 +26,7 @@ void LtcMebWrapper::init() {
     _ltc.cfgSetRefOn(true);
     _ltc.cfgSetVUV(3.1);
     _ltc.cfgSetVOV(4.2);
+    _ltc.cfgSetDischargeTimeout(LTC68041<ltc_count>::DischargeTimeout::DISCHRG_TIMEOUT_5MIN);
     _ltc.cfgWrite();
 }
 
@@ -198,26 +199,41 @@ void LtcMebWrapper::measure_cells() {
     if (_ltc_index != 0)
         return;
 
-    _ltc.startCellSocConv(LTC68041<ltc_count>::DCP_DISABLED);
+    unsigned long sleep = _ltc.startCellSocConv(LTC68041<ltc_count>::DCP_DISABLED);
+
+    if (sleep)
+        delay(sleep);
 }
 
 void LtcMebWrapper::measure_temps() {
     if (_ltc_index != 0)
         return;
 
-    _ltc.startAuxConv();
-    _ltc.startStatusConv(LTC68041<ltc_count>::CHST_ITMP);
+    unsigned long sleep = _ltc.startAuxConv();
+
+    if (sleep)
+        delay(sleep);
+
+    sleep = _ltc.startStatusConv(LTC68041<ltc_count>::CHST_ITMP);
+
+    if (sleep)
+        delay(sleep);
 }
 
 void LtcMebWrapper::measure_aux() {
     if (_ltc_index != 0)
         return;
 
+    unsigned long sleep;
+
     if constexpr (ltc_count > 1) {
-        _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1);
+        sleep = _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1);
     } else {
-        _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5);
+        sleep = _ltc.startAuxConv(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5);
     }
+
+    if (sleep)
+        delay(sleep);
 }
 
 std::vector<float> LtcMebWrapper::module_temps() {
