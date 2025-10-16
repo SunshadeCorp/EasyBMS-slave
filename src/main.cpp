@@ -17,25 +17,27 @@ std::shared_ptr<BatteryMonitor> battery_monitor;
 std::shared_ptr<IBalancer> balancer;
 std::shared_ptr<Display> display;
 std::shared_ptr<BMS> bms;
-std::shared_ptr<MockMqttClient> mock_mqtt_client;
 std::shared_ptr<MqttAdapter> mqtt_adapter;
 std::shared_ptr<BatteryInterface> battery_interface;
+
+// #define MOCK_BATTERY
+// #define MOCK_MQTT
 
 [[maybe_unused]] void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(6, OUTPUT); // SCLK
-    // pinMode(D1, OUTPUT); // LED1
     digitalWrite(LED_BUILTIN, false);
 
     DEBUG_BEGIN(74880);
-    // while (!Serial)
-    // ;
-    // delay(2000);
     DEBUG_PRINTLN("init");
 
-    // auto battery_interface = std::make_shared<SimulatedBattery>();
-    // battery_interface->scenario_everything_ok();
+    #ifdef MOCK_BATTERY
+    auto battery_interface = std::make_shared<SimulatedBattery>();
+    battery_interface->scenario_everything_ok();
+    #else
     auto battery_interface = std::make_shared<LtcMebWrapper>();
+    #endif
+
     battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
     battery_monitor->set_battery_config(battery_config);
     display = std::make_shared<Display>();
@@ -52,16 +54,16 @@ std::shared_ptr<BatteryInterface> battery_interface;
         connect_wifi(hostname, ssid, password);
         digitalWrite(LED_BUILTIN, true);
 
+        #ifdef MOCK_MQTT
+        auto mqtt = std::make_shared<MockMqttClient>();
+        mqtt->is_connected = false;
+        mqtt->connect_result = true;
+        #else
         auto mqtt = std::make_shared<MqttClient>(mqtt_server, mqtt_port);
         mqtt->set_user(mqtt_username);
         mqtt->set_password(mqtt_password);
         mqtt->set_id(hostname);
-
-        /*
-         mock_mqtt_client = std::make_shared<MockMqttClient>();
-         mock_mqtt_client->is_connected = false;
-         mock_mqtt_client->connect_result = true;
-         */
+        #endif
 
         mqtt_adapter = std::make_shared<MqttAdapter>(bms, mqtt);
         mqtt_adapter->set_ota_server(ota_server);

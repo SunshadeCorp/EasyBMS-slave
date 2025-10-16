@@ -2,7 +2,7 @@
 
 Simple Wifi based BMS for battery modules from EVs
 
-This battery management system is a combination of an openhardware board, the IC LTC6804-1 and a WLAN-enabled controller ESP8266 and a bit of opensource code. 
+This battery management system is a combination of an openhardware board, the IC LTC6804-1 and a WLAN-enabled controller ESP32-C6 and a bit of opensource code. 
 
 12-cell passive BMS per board with a WLAN interface suitable for lithium-ion NMC battery modules.
 
