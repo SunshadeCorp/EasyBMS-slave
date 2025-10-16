@@ -38,7 +38,8 @@ void LTC68041::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinCS, OUTPUT);
 
     SPI_local.begin(pinCLK, pinMISO, pinMOSI, -1);
-    // SPI.begin();
+    wakeup_idle();
+    delay(10);
 }
 
 /**

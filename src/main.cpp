@@ -31,6 +31,9 @@ std::shared_ptr<BatteryInterface> battery_interface;
     DEBUG_BEGIN(74880);
     DEBUG_PRINTLN("init");
 
+    display = std::make_shared<Display>();
+    display->init();
+
     #ifdef MOCK_BATTERY
     auto battery_interface = std::make_shared<SimulatedBattery>();
     battery_interface->scenario_everything_ok();
@@ -40,13 +43,10 @@ std::shared_ptr<BatteryInterface> battery_interface;
 
     battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
     battery_monitor->set_battery_config(battery_config);
-    display = std::make_shared<Display>();
     bms = std::make_shared<BMS>();
     bms->set_mode(bms_mode);
     bms->set_display(display);
     bms->set_battery_monitor(battery_monitor);
-
-    display->init();
 
     if (use_mqtt) {
         DEBUG_PRINTLN("Setup MQTT");

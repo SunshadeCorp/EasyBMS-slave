@@ -18,7 +18,6 @@ void Display::init() {
     _tft.fillScreen(_background_color);
     _tft.setRotation(1);
     _tft.setFreeFont(&Roboto_Mono_Light_13);
-    //_tft.setFreeFont(&FreeMono12pt7b);
 }
 
 String Display::format(float value, uint8_t decplaces, float min, float max, String unit) {
@@ -86,7 +85,7 @@ void Display::update(std::shared_ptr<BatteryMonitor> m) {
     // Print Cell Voltages
     auto& cell_voltages = m->cell_voltages();
     for (size_t i = 0; i < cell_voltages.size(); i++) {
-        if (m->measure_error()) {
+        if (m->measure_error() || !m->initialized()) {
             print(0, i, "-----");
         } else {
             String cell_voltage = format_cell_voltage(cell_voltages[i]);
@@ -112,36 +111,47 @@ void Display::update(std::shared_ptr<BatteryMonitor> m) {
     String module_temp_1 = format_temp(m->module_temp_1());
     String module_temp_2 = format_temp(m->module_temp_2());
     String chip_temp = format_temp(m->chip_temp());
-    String error_string = m->measure_error() ? "ERROR" : "";
+    String status_string = "";
 
-    if (m->measure_error()) {
+    if (!m->initialized()) {
+        status_string = "INIT...";
+    }
+    else if (m->measure_error()) {
+        status_string = "ERROR";
+    }
+
+
+    if (m->measure_error() || !m->initialized()) {
+        cell_diff = "-----";
+        soc = "-----";
+        module_voltage = "-----";
         min_cell_voltage = "-----";
         max_cell_voltage = "-----";
         avg_cell_voltage = "-----";
-        soc = "-----";
-        cell_diff = "-----";
-        module_voltage = "-----";
+        module_temp_1 = "-----";
+        module_temp_2 = "-----";
+        chip_temp = "-----";
     }
 
     String cell_diff_trend;
-    if (m->cell_diff_trend().has_value()) {
+    if (m->cell_diff_trend().has_value() && m->initialized()) {
         int cell_diff_mv = static_cast<int>(m->cell_diff_trend().value() * 1000);
         cell_diff_trend = format(cell_diff_mv, 0, -99, 99, "mVh");
     } else {
         cell_diff_trend = "-----";
     }
 
-    print(7, 0, "Dif:" + cell_diff);
+    print(7, 0, "Dif: " + cell_diff);
     // print(7, 1, "Tre:" + cell_diff_trend);
-    print(7, 1, "SOC:" + soc);
-    print(7, 2, "Mod:" + module_voltage);
-    print(7, 3, "Min:" + min_cell_voltage);
-    print(7, 4, "Avg:" + avg_cell_voltage);
-    print(7, 5, "Max:" + max_cell_voltage);
-    print(7, 6, "t1: " + module_temp_1);
-    print(7, 7, "t2: " + module_temp_2);
-    print(7, 8, "ti: " + chip_temp);
-    print(7, 11, error_string);
+    print(7, 1, "SOC: " + soc);
+    print(7, 2, "Mod: " + module_voltage);
+    print(7, 3, "Min: " + min_cell_voltage);
+    print(7, 4, "Avg: " + avg_cell_voltage);
+    print(7, 5, "Max: " + max_cell_voltage);
+    print(7, 6, " t1: " + module_temp_1);
+    print(7, 7, " t2: " + module_temp_2);
+    print(7, 8, " ti: " + chip_temp);
+    print(7, 11, status_string);
 
     flip();
 }

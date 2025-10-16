@@ -13,6 +13,7 @@
 class BatteryMonitor {
    public:
     BatteryMonitor(std::shared_ptr<BatteryInterface> bat);
+    bool initialized() const;
     void set_balance_bits(const std::vector<bool>& balance_bits);
     void measure();
     const std::vector<float>& cell_voltages() const;
@@ -42,6 +43,8 @@ class BatteryMonitor {
     std::shared_ptr<BatteryInterface> _bat;
     BatteryConfig _battery_config;
     BatteryType _battery_type;
+
+    bool _initialized;
 
     // Store cell diff history with 1h retention and 1 min granularity
     TimedHistory<float> _cell_diff_history = TimedHistory<float>(1000 * 60 * 60, 1000 * 60);

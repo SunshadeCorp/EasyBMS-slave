@@ -13,7 +13,12 @@
 BatteryMonitor::BatteryMonitor(std::shared_ptr<BatteryInterface> bat) {
     _cell_diff_trend = {};
     _bat = bat;
+    _initialized = false;
     _bat->init();
+}
+
+bool BatteryMonitor::initialized() const {
+    return _initialized;
 }
 
 void BatteryMonitor::set_battery_config(BatteryConfig config) {
@@ -133,6 +138,7 @@ void BatteryMonitor::measure() {
     if (_measure_error) {
         _measure_error_count++;
     }
+    _initialized = true;
 }
 
 uint32_t BatteryMonitor::measure_error_count() const {

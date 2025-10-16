@@ -1,4 +1,5 @@
 #include "simulated_battery.hpp"
+#include <esp32-hal.h>
 
 SimulatedBattery::SimulatedBattery() {
     // Do nothing
@@ -114,6 +115,7 @@ std::array<float, 12> SimulatedBattery::wiggle(std::array<float, 12> voltages) {
 }
 
 std::array<float, 12> SimulatedBattery::cell_voltages() {
+    delay(2000);
     balance();
     return wiggle(_voltages);
 }
