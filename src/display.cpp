@@ -109,9 +109,12 @@ void Display::update(std::shared_ptr<BatteryMonitor> m) {
     String min_cell_voltage = format_cell_voltage(m->min_voltage());
     String avg_cell_voltage = format_cell_voltage(m->avg_voltage());
     String max_cell_voltage = format_cell_voltage(m->max_voltage());
-    String module_temp_1 = format_temp(m->module_temp_1());
-    String module_temp_2 = format_temp(m->module_temp_2());
+    String module_temp_1 = format_temp(m->module_temps()[0]);
+    String module_temp_2 = format_temp(m->module_temps()[1]);
+    String pcb_temp_1 = format_temp(m->pcb_temps()[0]);
+    String pcb_temp_2 = format_temp(m->pcb_temps()[1]);
     String chip_temp = format_temp(m->chip_temp());
+    String module_current = format(m->battery_current(), 2, -99.9, 99.9, "A");
     String error_string = m->measure_error() ? "ERROR" : "";
 
     if (m->measure_error()) {
@@ -138,10 +141,16 @@ void Display::update(std::shared_ptr<BatteryMonitor> m) {
     print(7, 3, "Min:" + min_cell_voltage);
     print(7, 4, "Avg:" + avg_cell_voltage);
     print(7, 5, "Max:" + max_cell_voltage);
-    print(7, 6, "t1: " + module_temp_1);
-    print(7, 7, "t2: " + module_temp_2);
-    print(7, 8, "ti: " + chip_temp);
-    print(7, 11, error_string);
+    print(7, 6, "Tm1:" + module_temp_1);
+    print(7, 7, "Tm2:" + module_temp_2);
+    print(7, 8, "Tp1:" + pcb_temp_1);
+    print(7, 9, "Tp2:" + pcb_temp_2);
+    print(7, 10, "Ti: " + chip_temp);
+    if (error_string == "") {
+        print(7, 11, "Im: " + module_current);
+    } else {
+        print(7, 11, error_string);
+    }
 
     flip();
 }
