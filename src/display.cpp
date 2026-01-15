@@ -95,7 +95,7 @@ void Display::update(std::shared_ptr<BatteryMonitor> m) {
     }
 
     // Print Balance Bits
-    auto& balance_bits = m->balance_bits();
+    auto balance_bits = m->balance_bits();
     for (size_t i = 0; i < balance_bits.size(); i++) {
         if (balance_bits[i]) {
             print(5, i, "-");

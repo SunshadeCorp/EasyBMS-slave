@@ -13,6 +13,7 @@ class BatteryInterface {
     virtual BatteryType battery_type() = 0;
     virtual void set_balance_bits(const std::vector<bool> &balance_bits) = 0;
     virtual std::vector<bool> get_balance_bits() = 0;
+    virtual bool is_balancing() = 0;
     virtual void measure_cells() = 0;
     virtual void measure_temps() = 0;
     virtual void measure_aux() = 0;

@@ -20,11 +20,10 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 // #define MOCK_MQTT
 
 [[maybe_unused]] void setup() {
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, false);
-
     DEBUG_BEGIN(74880);
     DEBUG_PRINTLN("init");
+
+    auto hostname = String("easybms-") + mac_string();
 
     #ifdef MOCK_MQTT
     auto mqtt = std::make_shared<MockMqttClient>();
@@ -39,16 +38,14 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 
     if constexpr (use_mqtt) {
         DEBUG_PRINTLN("Setup MQTT");
-        auto hostname = String("easybms-") + mac_string();
         connect_wifi(hostname, ssid, password);
-        digitalWrite(LED_BUILTIN, true);
     }
 
+    for (int i = 0; auto &bms : bmsArr) {
     #ifdef MOCK_BATTERY
     auto battery_interface = std::make_shared<SimulatedBattery>();
     battery_interface->scenario_everything_ok();
     #else
-    for (int i = 0; auto &bms : bmsArr) {
         auto battery_interface = std::make_shared<LtcMebWrapper>(i++);
 
         switch(battery_config)
@@ -66,6 +63,7 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
             default:
                 break;
         }
+#endif
 
         auto battery_monitor = std::make_shared<BatteryMonitor>(battery_interface);
         battery_monitor->set_battery_config(battery_config);
@@ -103,6 +101,11 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
             bms->set_display(display);
             display->init();
         }
+        
+        if (i == (bmsArr.size() - 1)) {
+            bms->set_led(true);
+        }
+    }
     }
 }
 

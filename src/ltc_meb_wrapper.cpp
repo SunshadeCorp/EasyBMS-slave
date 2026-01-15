@@ -5,7 +5,7 @@
 LTC68041<ltc_count> LtcMebWrapper::_ltc(18); // CSLTC
 std::atomic<bool> LtcMebWrapper::initialized = false;
 
-LtcMebWrapper::LtcMebWrapper(size_t index) : _ltc_index{index}, _balance_error{false}, _measure_error{false}
+LtcMebWrapper::LtcMebWrapper(size_t index) : _ltc_index{index}, _balance_error{false}, _measure_error{false}, _balancing{false}
 {
 }
 
@@ -13,15 +13,13 @@ void LtcMebWrapper::init() {
     if(initialized)
         return;
 
-    initialized = true;
-
     _ltc.initSPI(2, 7, 6); // MOSI, MISO, SCLK
 
-    if (_ltc.checkSPI()) {
-        // digitalWrite(D1, HIGH); // LED1
-    } else {
-        // digitalWrite(D1, LOW); // LED1
+    if (!_ltc.checkSPI()) {
+        return;
     }
+
+    initialized = true;
 
     _ltc.cfgSetRefOn(true);
     _ltc.cfgSetVUV(3.1);
@@ -107,12 +105,6 @@ void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
             return;
     }
 
-    if (bits.any()) {
-        // digitalWrite(D2, HIGH); // LED2
-    } else {
-        // digitalWrite(D2, LOW); // LED2
-    }
-
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
@@ -146,6 +138,10 @@ void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
         }
     } else {
         _balance_error = !(bits == _ltc.cfgGetDCC());
+    }
+
+    if (!_balance_error) {
+        _balancing = bits.any();
     }
 }
 
@@ -193,6 +189,10 @@ std::vector<bool> LtcMebWrapper::get_balance_bits() {
     }
 
     return balance_bits;
+}
+
+bool LtcMebWrapper::is_balancing() {
+    return _balancing;
 }
 
 void LtcMebWrapper::measure_cells() {

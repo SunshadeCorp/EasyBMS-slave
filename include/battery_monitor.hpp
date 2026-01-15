@@ -18,6 +18,7 @@ class BatteryMonitor {
     void calc_temps();
     const std::vector<float>& cell_voltages() const;
     std::vector<bool> balance_bits() const;
+    bool is_balancing() const;
     void set_battery_config(BatteryConfig config);
     BatteryConfig battery_config() const;
     BatteryType battery_type() const;

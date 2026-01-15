@@ -19,6 +19,7 @@ class LtcMebWrapper : public BatteryInterface {
     BatteryType battery_type() override;
     void set_balance_bits(const std::vector<bool> &balance_bits) override;
     std::vector<bool> get_balance_bits() override;
+    bool is_balancing() override;
     void measure_cells() override;
     void measure_temps() override;
     void measure_aux() override;
@@ -70,5 +71,6 @@ class LtcMebWrapper : public BatteryInterface {
     const size_t _ltc_index;
     bool _balance_error;
     bool _measure_error;
+    bool _balancing;
     constexpr float raw_voltage_to_real_module_temp(float raw_voltage);
 };

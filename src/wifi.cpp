@@ -8,6 +8,10 @@
 
 #include "debug.hpp"
 
+#ifndef LED_STATUS
+#define LED_STATUS = LED_BUILTIN
+#endif
+
 void connect_wifi(String hostname, String ssid, String password) {
     Serial.println();
     Serial.println("connecting to ");
@@ -49,7 +53,7 @@ String perform_ota_update(String url, const char* cert) {
     NetworkClientSecure client_secure;
     client_secure.setCACert(cert);
     client_secure.setTimeout(12000);
-    httpUpdate.setLedPin(LED_BUILTIN, HIGH);
+    httpUpdate.setLedPin(LED_STATUS, HIGH);
     auto result = httpUpdate.update(client_secure, String("https://") + url);
     String result_string;
     switch (result) {

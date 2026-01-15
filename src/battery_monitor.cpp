@@ -80,6 +80,10 @@ std::vector<bool> BatteryMonitor::balance_bits() const {
     return _bat->get_balance_bits();
 }
 
+bool BatteryMonitor::is_balancing() const {
+    return _bat->is_balancing();
+}
+
 BatteryType BatteryMonitor::battery_type() const {
     return _bat->battery_type();
 }

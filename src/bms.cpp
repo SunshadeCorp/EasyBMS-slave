@@ -2,6 +2,20 @@
 
 #include "debug.hpp"
 
+#define RED 255,0,0
+#define GREEN 0,255,0
+#define BLUE 0,0,255
+#define ORANGE 255,127,0
+#define OFF 0,0,0
+
+
+#ifndef LED_DATA_RGB
+#define LED_DATA_RGB = RGB_BUILTIN
+#endif
+#ifndef LED_STATUS
+#define LED_STATUS = LED_BUILTIN
+#endif
+
 BMS::BMS() :
     _last_blink_time{0},
     _module_number{0},
@@ -11,6 +25,9 @@ BMS::BMS() :
     _led_builtin_state{false},
     _last_ltc_check{0}
 {
+    pinMode(LED_STATUS, OUTPUT);
+    digitalWrite(LED_STATUS, false);
+    rgbLedWrite(LED_DATA_RGB, OFF);
 }
 
 void BMS::blink() {
@@ -19,12 +36,12 @@ void BMS::blink() {
 
 void BMS::flip_led() {
     _led_builtin_state = !_led_builtin_state;
-    digitalWrite(LED_BUILTIN, _led_builtin_state ? LOW : HIGH);
+    digitalWrite(LED_STATUS, _led_builtin_state ? LOW : HIGH);
 }
 
 void BMS::set_led(bool led_state) {
     _led_builtin_state = led_state;
-    digitalWrite(LED_BUILTIN, _led_builtin_state ? LOW : HIGH);
+    digitalWrite(LED_STATUS, _led_builtin_state ? LOW : HIGH);
 }
 
 void BMS::set_module_number(uint8_t module_number) {
@@ -60,26 +77,47 @@ std::shared_ptr<const BatteryMonitor> BMS::battery_monitor() {
 }
 
 void BMS::loop() {
-    if (millis() - _last_ltc_check > LTC_CHECK_INTERVAL) {
-        _last_ltc_check = millis();
-        _battery_monitor->calc_cell_voltages();
-        _battery_monitor->calc_temps();
-
-        if (_balancer) {
-            _balancer->balance(_battery_monitor->cell_voltages());
-            _battery_monitor->set_balance_bits(_balancer->balance_bits());
-        }
-
-        if (_display) {
-            _display->update(_battery_monitor);
-        }
-    }
-
     if (millis() - _last_blink_time < BLINK_TIME) {
         if ((millis() - _last_blink_time) % 100 < 50) {
             set_led(false);
         } else {
             set_led(true);
         }
+    }
+
+    if (millis() - _last_ltc_check > LTC_CHECK_INTERVAL) {
+        rgbLedWrite(LED_DATA_RGB, OFF);
+        rgbLedWrite(LED_DATA_RGB, GREEN);
+
+        _last_ltc_check = millis();
+        _battery_monitor->calc_cell_voltages();
+        _battery_monitor->calc_temps();
+
+        if (_display) {
+            _display->update(_battery_monitor);
+        }
+
+        if (_battery_monitor->measure_error()) {
+            rgbLedWrite(LED_DATA_RGB, OFF);
+            rgbLedWrite(LED_DATA_RGB, RED);
+            return;
+        }
+
+        if (_balancer) {
+            _balancer->balance(_battery_monitor->cell_voltages());
+            _battery_monitor->set_balance_bits(_balancer->balance_bits());
+
+            if(_battery_monitor->balance_error()) {
+                rgbLedWrite(LED_DATA_RGB, OFF);
+                rgbLedWrite(LED_DATA_RGB, ORANGE);
+                return;
+            } else if(_battery_monitor->is_balancing()) {
+                rgbLedWrite(LED_DATA_RGB, OFF);
+                rgbLedWrite(LED_DATA_RGB, BLUE);
+                return;
+            }
+        }
+
+        rgbLedWrite(LED_DATA_RGB, OFF);
     }
 }
