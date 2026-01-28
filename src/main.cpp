@@ -46,7 +46,7 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
     auto battery_interface = std::make_shared<SimulatedBattery>();
     battery_interface->scenario_everything_ok();
     #else
-        auto battery_interface = std::make_shared<LtcMebWrapper>(i++);
+        auto battery_interface = std::make_shared<LtcMebWrapper>(i);
 
         switch(battery_config)
         {
@@ -105,6 +105,8 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
         if (i == (bmsArr.size() - 1)) {
             bms->set_led(true);
         }
+
+        i++;
     }
     }
 }
