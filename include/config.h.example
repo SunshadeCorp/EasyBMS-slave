@@ -18,6 +18,8 @@ constexpr BalanceMode bms_mode = BalanceMode::single;
 
 constexpr size_t ltc_count = 2;
 
+constexpr bool use_can = true;
+
 constexpr char ssid[] = "WIFI_SSID";
 constexpr char password[] = "WIFI_PASS";
 constexpr char mqtt_server[] = "mosquitto.local";
