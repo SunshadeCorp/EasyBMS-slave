@@ -18,6 +18,8 @@ https://github.com/jontubs/EasyBMS
 #include <cmath>
 #include <cstdint>
 
+#include "debug.hpp"
+
 #ifndef DEBUG
 #define DEBUG_BEGIN(...)
 #define DEBUG_PRINT(...)
@@ -1640,9 +1642,6 @@ template <std::size_t N, unsigned int M>
 //requires (N <= LTC68041<Nodes>::CELLNUM)
 bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
     static constexpr std::array<ValueNames, CELLNUM> cells = {C1V, C2V, C3V, C4V, C5V, C6V, C7V, C8V, C9V, C10V, C11V, C12V};
-#if DEBUG
-    static bool dbgPrint = false;
-#endif
 
     DEBUG_PRINT("Node: ");
     DEBUG_PRINTLN(M);
@@ -1661,9 +1660,7 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
                 DEBUG_PRINT(" ");
             }
 
-#if DEBUG
-            dbgPrint = true;
-#endif
+            DEBUG_PRINTLN();
         }
     }
 
@@ -1680,9 +1677,7 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
                 DEBUG_PRINT(" ");
             }
 
-#if DEBUG
-            dbgPrint = true;
-#endif
+            DEBUG_PRINTLN();
         }
     }
 
@@ -1699,9 +1694,7 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
                 DEBUG_PRINT(" ");
             }
 
-#if DEBUG
-            dbgPrint = true;
-#endif
+            DEBUG_PRINTLN();
         }
     }
 
@@ -1718,13 +1711,9 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
                 DEBUG_PRINT(" ");
             }
 
-#if DEBUG
-            dbgPrint = true;
-#endif
+            DEBUG_PRINTLN();
         }
     }
-
-    DEBUG_PRINTLN();
 
     auto cell = cells.cbegin();
     auto rcell = cells.crbegin();
@@ -1740,8 +1729,6 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
     }
 
 #if DEBUG
-    if (dbgPrint) {
-        dbgPrint = false;
         DEBUG_PRINTLN("Cell Voltages: ");
 
         if constexpr (N == 12)
@@ -1758,7 +1745,6 @@ bool LTC68041<Nodes>::getCellVoltages(std::array<float, N> &voltages) {
         }
 
         DEBUG_PRINTLN();
-    }
 #endif
 
     return true;
@@ -1801,6 +1787,8 @@ float LTC68041<Nodes>::getAuxVoltage(const AuxChannel chg) {
                 DEBUG_PRINT(" ");
             }
 
+            DEBUG_PRINTLN();
+
 #if DEBUG
             dbgPrint = true;
 #endif
@@ -1820,13 +1808,14 @@ float LTC68041<Nodes>::getAuxVoltage(const AuxChannel chg) {
                 DEBUG_PRINT(" ");
             }
 
+            DEBUG_PRINTLN();
+
 #if DEBUG
             dbgPrint = true;
 #endif
         }
     }
 
-    DEBUG_PRINTLN();
 #if DEBUG
     if (dbgPrint) {
         dbgPrint = false;
@@ -1908,6 +1897,8 @@ float LTC68041<Nodes>::getStatusVoltage(const StatusGroup chst) {
                 DEBUG_PRINT(" ");
             }
 
+            DEBUG_PRINTLN();
+
 #if DEBUG
             dbgPrint = true;
 #endif
@@ -1927,6 +1918,8 @@ float LTC68041<Nodes>::getStatusVoltage(const StatusGroup chst) {
                 DEBUG_PRINT(" ");
             }
 
+            DEBUG_PRINTLN();
+
 #if DEBUG
             dbgPrint = true;
 #endif
@@ -1936,7 +1929,6 @@ float LTC68041<Nodes>::getStatusVoltage(const StatusGroup chst) {
 #if DEBUG
     if (dbgPrint) {
         dbgPrint = false;
-        DEBUG_PRINTLN();
         DEBUG_PRINT("Internal Temperature: ");
         DEBUG_PRINT((parseVoltage<N>(ITMP) / 7.5E-3f - 273.0f) + offsetTemp);
         DEBUG_PRINTLN(" °C");

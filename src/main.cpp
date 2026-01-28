@@ -21,7 +21,7 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 
 [[maybe_unused]] void setup() {
     DEBUG_BEGIN(74880);
-    DEBUG_PRINTLN("init");
+    DEBUG_PRINTLN("init start");
 
     auto hostname = String("easybms-") + mac_string();
 
@@ -109,6 +109,8 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
         i++;
     }
     }
+
+    DEBUG_PRINTLN("init finished");
 }
 
 void loop() {

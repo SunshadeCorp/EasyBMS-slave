@@ -238,6 +238,7 @@ void LtcMebWrapper::measure_aux() {
 
 std::vector<float> LtcMebWrapper::module_temps() {
     std::vector<float> temps;
+    DEBUG_PRINTLN("read module temps");
 
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
@@ -262,6 +263,7 @@ std::vector<float> LtcMebWrapper::module_temps() {
 
 std::vector<float> LtcMebWrapper::pcb_temps() {
     std::vector<float> temps;
+    DEBUG_PRINTLN("read pcb temps");
 
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
@@ -285,6 +287,7 @@ std::vector<float> LtcMebWrapper::pcb_temps() {
 }
 
 float LtcMebWrapper::module_voltage() {
+    DEBUG_PRINTLN("read soc");
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
@@ -301,6 +304,7 @@ float LtcMebWrapper::module_voltage() {
 }
 
 float LtcMebWrapper::chip_temp() {
+    DEBUG_PRINTLN("read itmp");
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
@@ -317,6 +321,8 @@ float LtcMebWrapper::chip_temp() {
 }
 
 std::vector<float> LtcMebWrapper::cell_voltages() {
+    DEBUG_PRINTLN("read cells");
+
     switch(_bat_type)
     {
         case BatteryType::meb12s:
