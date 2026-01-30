@@ -973,7 +973,7 @@ bool LTC68041<Nodes>::waitForConversion() {
             ret = false;
             break;
         }
-        }
+    }
 
     digitalWrite(pinCS, HIGH);
     SPI_local.endTransaction();
@@ -1002,8 +1002,6 @@ float LTC68041<Nodes>::cfgGetVUV() const {
 
 template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetVOV(const float Overvoltage) {
-    // float Undervoltage=3.123;
-    // float Overvoltage=3.923;
     unsigned int VOV = static_cast<unsigned int>(Overvoltage / (0.0001f * 16.0f));  // Calc bitpattern for OV
 
     // regs.CFGR[CFGR0] = 0xFE;

@@ -63,8 +63,14 @@ BatteryType LtcMebWrapper::battery_type() {
     return _bat_type;
 }
 
-constexpr float LtcMebWrapper::raw_voltage_to_real_module_temp(float raw_voltage) {
-    return 32.0513f * raw_voltage - 23.0769f;
+constexpr float LtcMebWrapper::raw_voltage_to_real_temp(float raw_voltage, float r2, float r0, int beta) {
+    //return 32.0513f * raw_voltage - 23.0769f;
+
+    float r = (r2 * (3.0f - raw_voltage)) / raw_voltage;
+
+    float inv_t = 1.0f / 298.15f + (1 / beta) * log(r / r0);
+    float t = (1.0f / inv_t) - 273.15f;
+    return t;
 }
 
 void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
@@ -243,19 +249,19 @@ std::vector<float> LtcMebWrapper::module_temps() {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2)));
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
+            temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2), 12000.0f, 10000.0f, 3380));
+            temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3), 12000.0f, 10000.0f, 3380));
             break;
             case 1:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2)));
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
+            temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2), 12000.0f, 10000.0f, 3380));
+            temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3), 12000.0f, 10000.0f, 3380));
             break;
             default:
             break;
         }
     } else {
-        temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1)));
-        temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2)));
+        temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO1), 12000.0f, 10000.0f, 3380));
+        temps.push_back(raw_voltage_to_real_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO2), 12000.0f, 10000.0f, 3380));
     }
     
     return temps;
@@ -268,19 +274,19 @@ std::vector<float> LtcMebWrapper::pcb_temps() {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4)));
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5)));
+            temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4), 10000.0f, 10000.0f, 3380));
+            temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage<0>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5), 10000.0f, 10000.0f, 3380));
             break;
             case 1:
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4)));
-            temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5)));
+            temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4), 10000.0f, 10000.0f, 3380));
+            temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage<1>(LTC68041<ltc_count>::AuxChannel::CHG_GPIO5), 10000.0f, 10000.0f, 3380));
             break;
             default:
             break;
         }
     } else {
-        temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3)));
-        temps.push_back(raw_voltage_to_real_module_temp(_ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4)));
+        temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO3), 10000.0f, 10000.0f, 3380));
+        temps.push_back(raw_voltage_to_real_temp(3.0f - _ltc.getAuxVoltage(LTC68041<ltc_count>::AuxChannel::CHG_GPIO4), 10000.0f, 10000.0f, 3380));
     }
     
     return temps;

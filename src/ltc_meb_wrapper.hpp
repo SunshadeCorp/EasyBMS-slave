@@ -72,5 +72,5 @@ class LtcMebWrapper : public BatteryInterface {
     bool _balance_error;
     bool _measure_error;
     bool _balancing;
-    constexpr float raw_voltage_to_real_module_temp(float raw_voltage);
+    constexpr float raw_voltage_to_real_temp(float raw_voltage, float r2, float r0, int beta);
 };
