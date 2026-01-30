@@ -101,15 +101,20 @@ void MqttAdapter::reconnect() {
 }
 
 void MqttAdapter::loop() {
-    if (!_mqtt->connected()) {
-        reconnect();
-    }
+    static time_ms last_update = millis();
 
     _bms->loop();
-    update();
 
-    _last_connection = millis();
-    _mqtt->loop();
+    if (millis() - last_update > MQTT_UPDATE_INTERVAL) {
+        if (!_mqtt->connected()) {
+            reconnect();
+        }
+
+        last_update = millis();
+        update();
+        _last_connection = millis();
+        _mqtt->loop();
+    }
 }
 
 void MqttAdapter::reset_balancing(size_t size) {
@@ -170,6 +175,7 @@ void MqttAdapter::publish(const String &topic) {
     }
 
     _mqtt->publish(topic + "/module_temps", tmp);
+    tmp = "";
 
     for(const auto &temp : m->pcb_temps()) {
         tmp += String(temp) + ",";

@@ -32,6 +32,7 @@ class MqttAdapter : public IBalancer {
     std::shared_ptr<BMS> _bms;
     std::shared_ptr<IMqttClient> _mqtt;
     static constexpr time_ms MASTER_TIMEOUT = 5000;
+    static constexpr time_ms MQTT_UPDATE_INTERVAL = 1000;
     time_ms _last_connection;
     String _hostname;
     String _mac_topic;
