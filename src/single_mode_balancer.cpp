@@ -52,7 +52,7 @@ SingleModeBalancer::SingleModeBalancer(long balance_time_ms, long relax_time_ms)
 {
 }
 
-void SingleModeBalancer::SingleModeBalancer::balance(const std::vector<float>& voltages) {
+void SingleModeBalancer::balance(const std::vector<float>& voltages) {
     _voltages = voltages;
 
     if (_balance_bits.size() != _voltages.size()) {

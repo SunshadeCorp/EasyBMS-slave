@@ -108,7 +108,6 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
 
         i++;
     }
-    }
 
     DEBUG_PRINTLN("init finished");
 }
