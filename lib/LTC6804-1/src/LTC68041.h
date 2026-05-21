@@ -835,7 +835,7 @@ bool LTC68041<Nodes>::spi_read_cmd(Commands cmd) {
                 SPI_local.endTransaction();
                 return false;
             }
-            }
+        }
 
         digitalWrite(pinCS, HIGH);
         delayMicroseconds(2);  // toggle CS between commands
@@ -1138,14 +1138,15 @@ void LTC68041<Nodes>::cfgWrite()  // A two dimensional array of the configuratio
     SPI_local.transfer16(cmd);
     SPI_local.transfer16(calcPEC15(cmd));
 
-    for (auto &reg : regs) {
-        reg.CFGR[CFGR0 & 0x0F] = reg.CFGR0w;
+    // write in reverse order because the first config written ist for the last IC in the stack (daisy chain)
+    for (auto reg = regs.rbegin(); reg != regs.rend(); reg++) {
+        reg->CFGR[CFGR0 & 0x0F] = reg->CFGR0w;
 
-        for (const auto &element : reg.CFGR) {
+        for (const auto &element : reg->CFGR) {
             SPI_local.transfer(element);
         }
 
-        SPI_local.transfer16(calcPEC15(reg.CFGR));
+        SPI_local.transfer16(calcPEC15(reg->CFGR));
     }
 
     digitalWrite(pinCS, HIGH);

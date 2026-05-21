@@ -187,7 +187,7 @@ std::vector<bool> LtcMebWrapper::get_balance_bits() {
             break;
         case BatteryType::meb12s:
             for (int i = 0; i < balance_bits.size(); i++) {
-                balance_bits[i] = bits[i++];
+                balance_bits[i] = bits[i];
             }
             break;
         default:
