@@ -16,7 +16,7 @@ constexpr BatteryConfig battery_config = BatteryConfig::mebAuto;
  */
 constexpr BalanceMode bms_mode = BalanceMode::single;
 
-constexpr size_t ltc_count = 2;
+constexpr size_t ltc_count = 1;
 
 constexpr char ssid[] = "WIFI_SSID";
 constexpr char password[] = "WIFI_PASS";
