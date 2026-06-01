@@ -33,6 +33,12 @@ class LtcMebWrapper : public BatteryInterface {
     bool measure_error() override;
 
    private:
+    struct ntc_params {
+        float r2;
+        float r0;
+        float beta;
+    };
+
     template<std::size_t N>
     std::vector<float> get_cells() {
         std::array<float, N> voltages;
@@ -72,5 +78,5 @@ class LtcMebWrapper : public BatteryInterface {
     bool _balance_error;
     bool _measure_error;
     bool _balancing;
-    constexpr float raw_voltage_to_real_temp(float raw_voltage, float r2, float r0, int beta);
+    constexpr float raw_voltage_to_real_temp(float raw_voltage, float ref_voltage, const ntc_params &params);
 };
