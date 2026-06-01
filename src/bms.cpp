@@ -22,8 +22,7 @@ BMS::BMS() :
     _mode(BalanceMode::none),
     _balancer{},
     _battery_monitor{},
-    _led_builtin_state{false},
-    _last_ltc_check{0}
+    _led_builtin_state{false}
 {
     pinMode(LED_STATUS, OUTPUT);
     digitalWrite(LED_STATUS, false);
@@ -85,39 +84,35 @@ void BMS::loop() {
         }
     }
 
-    if (millis() - _last_ltc_check > LTC_CHECK_INTERVAL) {
+    rgbLedWrite(LED_DATA_RGB, OFF);
+    rgbLedWrite(LED_DATA_RGB, GREEN);
+
+    _battery_monitor->calc_cell_voltages();
+    _battery_monitor->calc_temps();
+
+    if (_display) {
+        _display->update(_battery_monitor);
+    }
+
+    if (_battery_monitor->measure_error()) {
         rgbLedWrite(LED_DATA_RGB, OFF);
-        rgbLedWrite(LED_DATA_RGB, GREEN);
+        rgbLedWrite(LED_DATA_RGB, RED);
+        return;
+    }
 
-        _last_ltc_check = millis();
-        _battery_monitor->calc_cell_voltages();
-        _battery_monitor->calc_temps();
+    if (_balancer) {
+        _battery_monitor->set_balance_bits(_balancer->balance(_battery_monitor->cell_voltages()));
 
-        if (_display) {
-            _display->update(_battery_monitor);
-        }
-
-        if (_battery_monitor->measure_error()) {
+        if(_battery_monitor->balance_error()) {
             rgbLedWrite(LED_DATA_RGB, OFF);
-            rgbLedWrite(LED_DATA_RGB, RED);
+            rgbLedWrite(LED_DATA_RGB, ORANGE);
+            return;
+        } else if(_battery_monitor->is_balancing()) {
+            rgbLedWrite(LED_DATA_RGB, OFF);
+            rgbLedWrite(LED_DATA_RGB, BLUE);
             return;
         }
-
-        if (_balancer) {
-            _balancer->balance(_battery_monitor->cell_voltages());
-            _battery_monitor->set_balance_bits(_balancer->balance_bits());
-
-            if(_battery_monitor->balance_error()) {
-                rgbLedWrite(LED_DATA_RGB, OFF);
-                rgbLedWrite(LED_DATA_RGB, ORANGE);
-                return;
-            } else if(_battery_monitor->is_balancing()) {
-                rgbLedWrite(LED_DATA_RGB, OFF);
-                rgbLedWrite(LED_DATA_RGB, BLUE);
-                return;
-            }
-        }
-
-        rgbLedWrite(LED_DATA_RGB, OFF);
     }
+
+    rgbLedWrite(LED_DATA_RGB, OFF);
 }

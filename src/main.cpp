@@ -13,39 +13,44 @@
 #include "timed_history.hpp"
 #include "wifi.hpp"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 std::array<std::shared_ptr<BMS>, ltc_count> bmsArr;
 std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
+TaskHandle_t  bmsThreadHandle;
+TaskHandle_t  mqttThreadHandle;
 
 // #define MOCK_BATTERY
 // #define MOCK_MQTT
 
+void bms_loop(void *param);
+void mqtt_loop(void *param);
+
 [[maybe_unused]] void setup() {
     DEBUG_BEGIN(74880);
-    DEBUG_PRINTLN("init start");
+    DEBUG_PRINTLN("Init start");
 
-    auto hostname = String("easybms-") + mac_string();
-
-    #ifdef MOCK_MQTT
+#ifdef MOCK_MQTT
     auto mqtt = std::make_shared<MockMqttClient>();
     mqtt->is_connected = false;
     mqtt->connect_result = true;
-    #else
-    auto mqtt = std::make_shared<MqttClient>(mqtt_server, mqtt_port);
-    mqtt->set_user(mqtt_username);
-    mqtt->set_password(mqtt_password);
-    mqtt->set_id(hostname);
-    #endif
-
-    if constexpr (use_mqtt) {
-        DEBUG_PRINTLN("Setup MQTT");
-        connect_wifi(hostname, ssid, password);
+#else
+    std::shared_ptr<MqttClient> mqtt;
+    
+    if constexpr(use_mqtt) {
+        mqtt = std::make_shared<MqttClient>(mqtt_server, mqtt_port);
+        mqtt->set_user(mqtt_username);
+        mqtt->set_password(mqtt_password);
+        mqtt->set_id(String("easybms-") + mac_string());
     }
+#endif
 
     for (int i = 0; auto &bms : bmsArr) {
-    #ifdef MOCK_BATTERY
-    auto battery_interface = std::make_shared<SimulatedBattery>();
-    battery_interface->scenario_everything_ok();
-    #else
+#ifdef MOCK_BATTERY
+        auto battery_interface = std::make_shared<SimulatedBattery>();
+        battery_interface->scenario_everything_ok();
+#else
         auto battery_interface = std::make_shared<LtcMebWrapper>(i);
 
         switch(battery_config)
@@ -109,19 +114,41 @@ std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
         i++;
     }
 
-    DEBUG_PRINTLN("init finished");
+    xTaskCreatePinnedToCore(
+        bms_loop, "BMSLoop", 16384, nullptr, 1, &bmsThreadHandle, 0);
+    xTaskCreatePinnedToCore(
+        mqtt_loop, "MQTTLoop", 16384, nullptr, 1, &mqttThreadHandle, 0);
+
+    DEBUG_PRINTLN("Init finished");
 }
 
-void loop() {
-    if constexpr (use_mqtt) {
-        for (auto &mqtt_adapter : mqtt_adapterArr)
-            if (mqtt_adapter)
-                mqtt_adapter->loop();
-    } else {
+void bms_loop(void *param) {
+    static constexpr time_ms LTC_CHECK_INTERVAL = 1000;
+
+    for(;;) {
         for (auto &bms : bmsArr)
             if (bms)
                 bms->loop();
-    }
 
-    delay(100);
+        delay(LTC_CHECK_INTERVAL);
+    }
+}
+
+void mqtt_loop(void *param) {
+    static constexpr time_ms MQTT_UPDATE_INTERVAL = 1000;
+
+    if constexpr (use_mqtt) {
+        connect_wifi(String("easybms-") + mac_string(), ssid, password);
+
+        for(;;) {
+            for (auto &mqtt_adapter : mqtt_adapterArr)
+                if (mqtt_adapter)
+                    mqtt_adapter->loop();
+
+            delay(MQTT_UPDATE_INTERVAL);
+        }
+    }
+}
+
+void loop() {
 }

@@ -17,11 +17,13 @@ MqttAdapter::MqttAdapter(const std::shared_ptr<BMS> &bms, const std::shared_ptr<
     _mac_topic(),
     _module_topic(),
     _last_master_uptime{0},
+    _balance_semaphore{nullptr},
     _balance_start_time{},
     _balance_duration{},
     _ota_cert{nullptr},
     _ota_server()
 {
+    _balance_semaphore = xSemaphoreCreateMutex();
 }
 
 bool MqttAdapter::is_uint(const String& number_string) const {
@@ -81,11 +83,14 @@ void MqttAdapter::reconnect() {
             _mqtt->publish(_mac_topic + "/flash", flash_description());
             _mqtt->publish(_mac_topic + "/bms_mode", as_string(_bms->mode()));
             // Resubscribe
-            _mqtt->subscribe("master/uptime", callback(on_mqtt_master_uptime));
-            for (int i = 0; i < 12; ++i) {
-                _mqtt->subscribe(_module_topic + "/cell/" + (i + 1) + "/balance_request", callback(on_mqtt_balance_request));
+            if (_bms->mode() == BalanceMode::slave) {
+                _mqtt->subscribe("master/uptime", callback(on_mqtt_master_uptime));
+                for (int i = 0; i < 12; ++i) {
+                    _mqtt->subscribe(_module_topic + "/cell/" + (i + 1) + "/balance_request", callback(on_mqtt_balance_request));
+                }
+                _mqtt->subscribe(_mac_topic + "/blink", callback(on_mqtt_blink));
             }
-            _mqtt->subscribe(_mac_topic + "/blink", callback(on_mqtt_blink));
+
             _mqtt->subscribe(_mac_topic + "/set_config", callback(on_mqtt_set_config));
             _mqtt->subscribe(_mac_topic + "/restart", callback(on_mqtt_restart));
             _mqtt->subscribe(_mac_topic + "/ota", callback(on_mqtt_ota));
@@ -101,20 +106,13 @@ void MqttAdapter::reconnect() {
 }
 
 void MqttAdapter::loop() {
-    static time_ms last_update = millis();
-
-    _bms->loop();
-
-    if (millis() - last_update > MQTT_UPDATE_INTERVAL) {
-        if (!_mqtt->connected()) {
-            reconnect();
-        }
-
-        last_update = millis();
-        update();
-        _last_connection = millis();
-        _mqtt->loop();
+    if (!_mqtt->connected()) {
+        reconnect();
     }
+
+    publish(_module_topic);
+    _last_connection = millis();
+    _mqtt->loop();
 }
 
 void MqttAdapter::reset_balancing(size_t size) {
@@ -143,6 +141,7 @@ std::vector<bool> MqttAdapter::balance(const std::vector<float>& voltages) {
         }
     }
 
+    xSemaphoreGive(_balance_semaphore);
     return balance_bits;
 }
 
@@ -187,24 +186,6 @@ void MqttAdapter::publish(const String &topic) {
     _mqtt->publish(topic + "/battery_current", m->battery_current());
 }
 
-void MqttAdapter::update() {
-    bool is_balancing = false;
-
-    auto balance_bits = _bms->battery_monitor()->balance_bits();
-    for (size_t i = 0; i < balance_bits.size(); i++) {
-        if (balance_bits[i]) {
-            is_balancing = true;
-        }
-    }
-
-    if (!is_balancing) {
-        // Deprecated
-        publish(_module_topic + "/accurate");
-    }
-
-    publish(_module_topic);
-}
-
 String MqttAdapter::module_topic() const {
     return _module_topic;
 }
@@ -226,6 +207,10 @@ void MqttAdapter::on_mqtt_master_uptime(const String &topic_string, const String
 }
 
 void MqttAdapter::on_mqtt_balance_request(const String &topic_string, const String &payload_string) {
+    if (xSemaphoreTake(_balance_semaphore, 100) == pdFALSE ) {
+        return;
+    }
+
     String cell_name = topic_string.substring((_module_topic + "/cell/").length());
     cell_name = cell_name.substring(0, cell_name.indexOf("/"));
     int cell_id = cell_id_from_name(cell_name);
@@ -245,6 +230,7 @@ void MqttAdapter::on_mqtt_balance_request(const String &topic_string, const Stri
 
     _balance_start_time[cell_id] = millis();
     _balance_duration[cell_id] = balance_time;
+    xSemaphoreGive(_balance_semaphore);
 }
 
 void MqttAdapter::on_mqtt_blink(const String &topic_string, const String &payload_string) {

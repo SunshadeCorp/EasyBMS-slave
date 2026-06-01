@@ -6,6 +6,8 @@
 #include "display.hpp"
 #include "mqtt_adapter.hpp"
 
+#include <atomic>
+
 
 class MqttAdapter;
 
@@ -30,13 +32,11 @@ class BMS {
 
    private:
     static constexpr time_ms BLINK_TIME = 5000;
-    static constexpr time_ms LTC_CHECK_INTERVAL = 1000;
-    time_ms _last_blink_time;
+    std::atomic<time_ms> _last_blink_time;
     uint8_t _module_number;
     BalanceMode _mode;
     std::shared_ptr<IBalancer> _balancer;
     std::shared_ptr<BatteryMonitor> _battery_monitor;
     std::shared_ptr<Display> _display;
     bool _led_builtin_state;
-    time_ms _last_ltc_check;
 };
