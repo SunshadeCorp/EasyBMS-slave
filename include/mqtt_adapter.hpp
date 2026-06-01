@@ -21,9 +21,7 @@ class MqttAdapter : public IBalancer {
     void init(const String &index);
     void reconnect();
     void loop();
-    void balance(const std::vector<float>& voltages) override;
-    std::vector<bool> balance_bits() override;
-    void update();
+    std::vector<bool> balance(const std::vector<float>& voltages) override;
     void set_ota_server(String ota_server);
     void set_ota_cert(const char* cert);
     String module_topic() const;

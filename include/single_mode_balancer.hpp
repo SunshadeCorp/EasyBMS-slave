@@ -9,8 +9,7 @@
 class SingleModeBalancer : public IBalancer {
    public:
     SingleModeBalancer(long balance_time_ms, long relax_time_ms);
-    void balance(const std::vector<float>& voltages) override;
-    std::vector<bool> balance_bits() override;
+    std::vector<bool> balance(const std::vector<float>& voltages) override;
 
    private:
     enum class BalancerState {
@@ -28,10 +27,9 @@ class SingleModeBalancer : public IBalancer {
     float _cut_off_voltage;
 
     BalancerState _balancer_state;
-    std::vector<float> _voltages;
     std::vector<bool> _balance_bits;
 
     void reset_balance_bits();
-    void select_cells_to_balance();
-    float min_voltage() const;
+    void select_cells_to_balance(const std::vector<float>& voltages);
+    float min_voltage(const std::vector<float>& voltages) const;
 };

@@ -122,15 +122,15 @@ void MqttAdapter::reset_balancing(size_t size) {
     _balance_duration.assign(size, false);
 }
 
-void MqttAdapter::balance(const std::vector<float>& voltages) {
-    // Do nothing
-}
+std::vector<bool> MqttAdapter::balance(const std::vector<float>& voltages) {
+    auto balance_bits = std::vector<bool>(voltages.size(), false);
 
-std::vector<bool> MqttAdapter::balance_bits() {
-    auto number_of_cells = _bms->battery_monitor()->cell_voltages().size();
-    auto balance_bits = std::vector<bool>(number_of_cells, false);
+    if (xSemaphoreTake(_balance_semaphore, 100) == pdFALSE ) {
+        reset_balancing(balance_bits.size());
+        return balance_bits;
+    }
 
-    if (_balance_start_time.size() != number_of_cells) {
+    if (_balance_start_time.size() != voltages.size()) {
         reset_balancing(balance_bits.size());
         return balance_bits;
     }

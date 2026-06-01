@@ -10,16 +10,16 @@ void SingleModeBalancer::reset_balance_bits() {
     }
 }
 
-void SingleModeBalancer::select_cells_to_balance() {
-    float target = min_voltage();
+void SingleModeBalancer::select_cells_to_balance(const std::vector<float>& voltages) {
+    float target = min_voltage(voltages);
 
     if (target <= _cut_off_voltage) {
         // Don't balance
         reset_balance_bits();
     } else {
         // Balance all the cells above target_voltage
-        for (size_t i = 0; i < _voltages.size(); i++) {
-            if (_voltages[i] > target + 0.005) {
+        for (size_t i = 0; i < voltages.size(); i++) {
+            if (voltages[i] > target + 0.005) {
                 _balance_bits[i] = true;
             } else {
                 _balance_bits[i] = false;
@@ -28,12 +28,12 @@ void SingleModeBalancer::select_cells_to_balance() {
     }
 }
 
-float SingleModeBalancer::min_voltage() const {
-    float min = _voltages[0];
+float SingleModeBalancer::min_voltage(const std::vector<float>& voltages) const {
+    float min = voltages[0];
 
-    for (size_t i = 0; i < _voltages.size(); i++) {
-        if (_voltages[i] < min) {
-            min = _voltages[i];
+    for (size_t i = 0; i < voltages.size(); i++) {
+        if (voltages[i] < min) {
+            min = voltages[i];
         }
     }
 
@@ -47,16 +47,13 @@ SingleModeBalancer::SingleModeBalancer(long balance_time_ms, long relax_time_ms)
     _relax_start_timestamp{0},
     _cut_off_voltage{3.5},
     _balancer_state(BalancerState::Idle),
-    _voltages{},
     _balance_bits{}
 {
 }
 
-void SingleModeBalancer::balance(const std::vector<float>& voltages) {
-    _voltages = voltages;
-
-    if (_balance_bits.size() != _voltages.size()) {
-        _balance_bits.resize(_voltages.size());
+std::vector<bool> SingleModeBalancer::balance(const std::vector<float>& voltages) {
+    if (_balance_bits.size() != voltages.size()) {
+        _balance_bits.resize(voltages.size());
         reset_balance_bits();
         _balancer_state = BalancerState::Idle;
     }
@@ -78,12 +75,10 @@ void SingleModeBalancer::balance(const std::vector<float>& voltages) {
     }
 
     if (_balancer_state == BalancerState::Idle) {
-        select_cells_to_balance();
+        select_cells_to_balance(voltages);
         _balance_start_timestamp = time;
         _balancer_state = BalancerState::Balancing;
     }
-}
 
-std::vector<bool> SingleModeBalancer::balance_bits() {
     return _balance_bits;
 }
