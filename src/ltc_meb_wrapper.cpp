@@ -112,13 +112,13 @@ void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            _ltc.cfgSetDCC<0>(bits);
-            break;
+                _ltc.cfgSetDCC<0>(bits);
+                break;
             case 1:
-            _ltc.cfgSetDCC<1>(bits);
-            break;
+                _ltc.cfgSetDCC<1>(bits);
+                break;
             default:
-            break;
+                break;
         }
     } else {
         _ltc.cfgSetDCC(bits);
@@ -132,13 +132,13 @@ void LtcMebWrapper::set_balance_bits(const std::vector<bool> &balance_bits) {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            _balance_error = !(bits == _ltc.cfgGetDCC<0>());
-            break;
+                _balance_error = !(bits == _ltc.cfgGetDCC<0>());
+                break;
             case 1:
-            _balance_error = !(bits == _ltc.cfgGetDCC<1>());
-            break;
+                _balance_error = !(bits == _ltc.cfgGetDCC<1>());
+                break;
             default:
-            break;
+                break;
         }
     } else {
         _balance_error = !(bits == _ltc.cfgGetDCC());
@@ -156,13 +156,13 @@ std::vector<bool> LtcMebWrapper::get_balance_bits() {
     if constexpr (ltc_count > 1) {
         switch (_ltc_index) {
             case 0:
-            bits = _ltc.cfgGetDCC<0>();
-            break;
+                bits = _ltc.cfgGetDCC<0>();
+                break;
             case 1:
-            bits = _ltc.cfgGetDCC<1>();
-            break;
+                bits = _ltc.cfgGetDCC<1>();
+                break;
             default:
-            break;
+                break;
         }
     } else {
         bits = _ltc.cfgGetDCC();

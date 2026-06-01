@@ -336,7 +336,7 @@ class LTC68041 {
      * @param dcc DCC bits as std::bitset<12>
      */
     template <unsigned int N = 0>
-    requires (N < Nodes)
+    //requires (N < Nodes)
     void cfgSetDCC(std::bitset<12> dcc);
 
     /**
@@ -345,7 +345,7 @@ class LTC68041 {
      * @return DCC bits as std::bitset<12> 
      */
     template <unsigned int N = 0>
-    requires (N < Nodes)
+    //requires (N < Nodes)
     std::bitset<12> cfgGetDCC() const;
 
     /**
@@ -1599,7 +1599,7 @@ Discharge this cell (1-12), disable all other, IF -1 then all off
 *********************************************************************************************************/
 template <std::size_t Nodes>
 template <unsigned int N>
-requires (N < Nodes)
+//requires (N < Nodes)
 void LTC68041<Nodes>::cfgSetDCC(std::bitset<12> dcc) {
     // assert 0x0fff
     regs[N].CFGR[CFGR4 & 0x0F] = (dcc.to_ulong() & CFG4_DCC_MSK);  // (regs[N].CFGRx[CFGR1] & CFG1_DCC_INVMSK) |
@@ -1608,7 +1608,7 @@ void LTC68041<Nodes>::cfgSetDCC(std::bitset<12> dcc) {
 
 template <std::size_t Nodes>
 template <unsigned int N>
-requires (N < Nodes)
+//requires (N < Nodes)
 std::bitset<12> LTC68041<Nodes>::cfgGetDCC() const {
     return std::bitset<12>{regs[N].CFGR[CFGR4 & 0x0F] | (static_cast<unsigned long long>(regs[N].CFGR[CFGR5 & 0x0F] & CFG5_DCC_MSK) << 8)};
 }
