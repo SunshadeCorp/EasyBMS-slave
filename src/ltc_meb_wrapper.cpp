@@ -19,7 +19,7 @@ void LtcMebWrapper::init() {
 
     initialized = true;
 
-    _ltc.cfgSetRefOn(true);
+    //_ltc.cfgSetRefOn(true);
     _ltc.cfgSetVUV(3.1);
     _ltc.cfgSetVOV(4.2);
     _ltc.cfgSetDischargeTimeout(LTC68041<ltc_count>::DischargeTimeout::DISCHRG_TIMEOUT_5MIN);
