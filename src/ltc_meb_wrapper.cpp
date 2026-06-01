@@ -13,9 +13,7 @@ void LtcMebWrapper::init() {
     if(initialized)
         return;
 
-    _ltc.initSPI(2, 7, 6); // MOSI, MISO, SCLK
-
-    if (!_ltc.checkSPI()) {
+    if (!_ltc.initSPI(2, 7, 6)) { // MOSI, MISO, SCLK
         return;
     }
 

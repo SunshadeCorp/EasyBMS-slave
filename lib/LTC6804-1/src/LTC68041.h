@@ -230,7 +230,7 @@ class LTC68041 {
      * @param pinMISO Pin used as MISO
      * @param pinCLK Pin used as SCLK
      */
-    void initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
+    bool initSPI(byte pinMOSI, byte pinMISO, byte pinCLK);
     /**
      * @brief Deinitialize SPI bus Instance
      * 
@@ -758,17 +758,18 @@ LTC68041<Nodes>::LTC68041(byte pCS, float tempOffset) : offsetTemp(tempOffset), 
     DEBUG_PRINT("Objekt angelegt");
 
     for (auto &reg : regs)
-        reg.CFGR0w = 0xFE;
+        reg.CFGR0w = 0xF8;
 }
 
 template <std::size_t Nodes>
-void LTC68041<Nodes>::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
+bool LTC68041<Nodes>::initSPI(byte pinMOSI, byte pinMISO, byte pinCLK) {
     pinMode(pinMOSI, OUTPUT);
     pinMode(pinMISO, INPUT);
     pinMode(pinCLK, OUTPUT);
     pinMode(pinCS, OUTPUT);
 
     SPI_local.begin(pinCLK, pinMISO, pinMOSI, -1);
+    return checkSPI();
 }
 
 template <std::size_t Nodes>
@@ -1266,19 +1267,7 @@ No other command necessary, Just call this and get
 *********************************************************************************************************/
 template <std::size_t Nodes>
 bool LTC68041<Nodes>::checkSPI() {
-    bool ret = spi_read_cmd(RDCFG);
-
-    DEBUG_PRINTLN();
-    DEBUG_PRINT("RSP: ");
-
-    for(const auto &reg : regs) {
-        for (const auto &element : reg.CFGR) {
-            DEBUG_PRINT(element, HEX);
-            DEBUG_PRINT(" ");
-        }
-
-        DEBUG_PRINTLN();
-    }
+    bool ret = cfgRead();
 
     DEBUG_PRINTLN();
 
