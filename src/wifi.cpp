@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <esp_mac.h>
 #include <lwip/dns.h>
+#include <esp_wifi.h>
 
 #include "debug.hpp"
 
@@ -25,6 +26,7 @@ void connect_wifi(String hostname, String ssid, String password) {
         delay(100);
         Serial.print(".");
     }
+    activate_modem_sleep();
     Serial.println("");
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
@@ -41,6 +43,14 @@ void connect_wifi(String hostname, String ssid, String password) {
 #endif
 }
 
+void activate_modem_sleep() {
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+}
+
+void deactivate_modem_sleep() {
+    esp_wifi_set_ps(WIFI_PS_NONE);
+}
+
 String mac_string() {
     uint8_t mac[6];
     esp_base_mac_addr_get(mac);
@@ -53,6 +63,7 @@ String perform_ota_update(String url, const char* cert) {
     NetworkClientSecure client_secure;
     client_secure.setCACert(cert);
     client_secure.setTimeout(12000);
+    deactivate_modem_sleep();
     httpUpdate.setLedPin(LED_STATUS, HIGH);
     auto result = httpUpdate.update(client_secure, String("https://") + url);
     String result_string;
@@ -72,5 +83,6 @@ String perform_ota_update(String url, const char* cert) {
             break;
     }
     DEBUG_PRINTLN(result_string);
+    activate_modem_sleep();
     return result_string;
 }
