@@ -124,18 +124,20 @@ void mqtt_loop(void *param);
 
 void bms_loop(void *param) {
     static constexpr time_ms LTC_CHECK_INTERVAL = 1000;
+    TickType_t lastWake = pdMS_TO_TICKS(millis());
 
     for(;;) {
         for (auto &bms : bmsArr)
             if (bms)
                 bms->loop();
 
-        delay(LTC_CHECK_INTERVAL);
+        xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(LTC_CHECK_INTERVAL));
     }
 }
 
 void mqtt_loop(void *param) {
     static constexpr time_ms MQTT_UPDATE_INTERVAL = 1000;
+    TickType_t lastWake = pdMS_TO_TICKS(millis());
 
     if constexpr (use_mqtt) {
         connect_wifi(String("easybms-") + mac_string(), ssid, password);
@@ -145,7 +147,7 @@ void mqtt_loop(void *param) {
                 if (mqtt_adapter)
                     mqtt_adapter->loop();
 
-            delay(MQTT_UPDATE_INTERVAL);
+            xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(MQTT_UPDATE_INTERVAL));
         }
     }
 }
