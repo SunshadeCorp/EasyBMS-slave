@@ -16,10 +16,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-std::array<std::shared_ptr<BMS>, ltc_count> bmsArr;
-std::array<std::shared_ptr<MqttAdapter>, ltc_count> mqtt_adapterArr;
-TaskHandle_t  bmsThreadHandle;
-TaskHandle_t  mqttThreadHandle;
+std::array<std::shared_ptr<BMS>, LTC_COUNT> bmsArr;
+std::array<std::shared_ptr<MqttAdapter>, LTC_COUNT> mqtt_adapterArr;
 
 // #define MOCK_BATTERY
 // #define MOCK_MQTT

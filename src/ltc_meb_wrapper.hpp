@@ -8,7 +8,9 @@
 
 #include "battery_interface.hpp"
 
-#include "config.h"
+#ifndef LTC_COUNT
+#define LTC_COUNT 1
+#endif
 
 class LtcMebWrapper : public BatteryInterface {
    public:
@@ -44,20 +46,20 @@ class LtcMebWrapper : public BatteryInterface {
         std::array<float, N> voltages;
         bool success;
 
-        if constexpr (ltc_count > 1) {
-            switch (_ltc_index) {
-                case 0:
-                success = _ltc.getCellVoltages<N,0>(voltages);
-                break;
-                case 1:
-                success = _ltc.getCellVoltages<N,1>(voltages);
-                break;
-                default:
-                break;
-            }
-        } else {
-            success = _ltc.getCellVoltages(voltages);
+#if (LTC_COUNT > 1)
+        switch (_ltc_index) {
+            case 0:
+            success = _ltc.getCellVoltages<N,0>(voltages);
+            break;
+            case 1:
+            success = _ltc.getCellVoltages<N,1>(voltages);
+            break;
+            default:
+            break;
         }
+#else
+        success = _ltc.getCellVoltages(voltages);
+#endif
 
         if (success) {
             _measure_error = false;
@@ -73,7 +75,7 @@ class LtcMebWrapper : public BatteryInterface {
 
     BatteryType _bat_type;
     static std::atomic<bool> initialized;
-    static LTC68041<ltc_count> _ltc;
+    static LTC68041<LTC_COUNT> _ltc;
     const size_t _ltc_index;
     bool _balance_error;
     bool _measure_error;
