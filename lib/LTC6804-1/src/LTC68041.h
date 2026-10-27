@@ -1028,6 +1028,8 @@ void LTC68041<Nodes>::cfgSetDischargeTimeout(DischargeTimeout timeout) {
 
 template <std::size_t Nodes>
 void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
+    bool writeCfg = false;
+
     for (auto &reg : regs) {
         switch (mode) {
             case ADCFilterMode::BANDWIDTH_422HZ:
@@ -1065,6 +1067,13 @@ void LTC68041<Nodes>::cfgSetADCMode(ADCFilterMode mode) {
             default:
                 break;
         }
+
+        if (reg.CFGR0w != reg.CFGR0r)
+            writeCfg = true;
+    }
+
+    if (writeCfg) {
+        cfgWrite();
     }
 }
 
