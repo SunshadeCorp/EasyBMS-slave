@@ -1,0 +1,174 @@
+#include "mqtt_manager.h"
+
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
+
+#include <map>
+#include <set>
+
+#include "can_manager.h"
+#include "wifi.hpp"
+#include "Wifi.h"
+
+PsychicMqttClient MqttManager::client;
+
+String MqttManager::module_topic = "master/can/";
+String MqttManager::will_topic;
+
+unsigned long MqttManager::last_blink_time = 0;
+unsigned long MqttManager::last_master_heartbeat_time = 0;
+
+struct QueuedMessage {
+  String topic;
+  String payload;
+  bool retain;
+  int priority;
+};
+
+struct MessageComparator {
+  bool operator()(const QueuedMessage& a, const QueuedMessage& b) const {
+    return a.priority > b.priority;  // high priority first
+  }
+};
+
+static std::multiset<QueuedMessage, MessageComparator> messageQueue;
+
+void MqttManager::init(const std::string_view &server, const std::string_view &user,
+                       const std::string_view &password) {
+  if (module_topic.length() <= 0) {
+    module_topic = String("espcan-") + WifiManager::mac_string() + "/";
+  }
+  client.setServer(server.data());
+  client.setCredentials(user.data(), password.data());
+  will_topic = module_topic + "available";
+  client.setWill(will_topic.c_str(), 0, true, "offline");
+  client.setKeepAlive(60);
+  client.onConnect(onConnect);
+  client.onMessage(onMessage);
+  client.connect();
+  last_master_heartbeat_time = millis();
+}
+
+void MqttManager::loop() {
+  unsigned long last_heartbeat = last_master_heartbeat_time;
+  unsigned long delta = millis() - last_heartbeat;
+  if (delta >= heartbeat_timeout_reboot_ms) {
+    log(String("DEBUG check: delta=") + String(delta) + ", limit=" + String(heartbeat_timeout_reboot_ms), false);
+    log(String(millis()) + " : " + String(last_heartbeat), false);
+    log("master heartbeat timeout - restarting!", false);
+    ESP.restart();
+  }
+  if (!client.connected() || messageQueue.empty()) {
+    return;
+  }
+  const auto it = messageQueue.begin();
+  const QueuedMessage& msg = *it;  // highest priority message
+  client.publish(msg.topic.c_str(), 0, msg.retain, msg.payload.c_str(), 0, false);
+  messageQueue.erase(it);
+}
+
+void MqttManager::onMessage(char* topic, char* payload, int retain, int qos, bool dup) {
+  String sTopic(topic);
+  if (sTopic.startsWith(module_topic)) {
+    sTopic = sTopic.substring(module_topic.length());
+  }
+  if (sTopic.equals("blink")) {
+    last_blink_time = millis();
+    return;
+  }
+  if (sTopic.equals(mqtt_master_heartbeat_topic)) {
+    last_master_heartbeat_time = millis();
+    return;
+  }
+  if (sTopic.equals("restart")) {
+    log("restart requested - restarting!", false);
+    ESP.restart();
+  }
+  const bool isSet = sTopic.endsWith("/set");
+  const bool isReset = sTopic.endsWith("/reset");
+  char* endPtr;
+  const float value = strtof(payload, &endPtr);
+  if (isSet && *endPtr != '\0') {
+    log(String("failed to parse ") + payload + " of topic " + sTopic + ".");
+    return;
+  }
+  if (!isSet && !isReset) return;
+  if (isSet) {
+    sTopic = sTopic.substring(0, sTopic.length() - 4);
+  } else {
+    sTopic = sTopic.substring(0, sTopic.length() - 6);
+  }
+  const auto it = CanManager::value_map.find(sTopic);
+  if (it == CanManager::value_map.end()) {
+    return;
+  }
+  if (isSet) {
+    *it->second.valuePtr = value;
+  } else {
+    *it->second.valuePtr = it->second.defaultValue;
+  }
+}
+
+void MqttManager::log(const String& line, const bool async, const int priority) {
+  publish("log", line, false, async, priority);
+}
+
+void MqttManager::publish(const String& topic, const float value, const bool retain, const bool async,
+                          const int priority) {
+  publish(topic, String(value), retain, async, priority);
+}
+
+void MqttManager::publish(const String& topic, const uint32_t value, const bool retain, const bool async,
+                          const int priority) {
+  publish(topic, String(value), retain, async, priority);
+}
+
+void MqttManager::publish(const String& topic, const String& payload, const bool retain, const bool async,
+                          const int priority) {
+  if (async) {
+    const QueuedMessage msg{module_topic + topic, payload, retain, priority};
+    if (messageQueue.size() >= max_mqtt_send_queue) {
+      if (const auto it = --messageQueue.end(); priority > it->priority) {
+        messageQueue.erase(it);  // delete lowest priority message
+        messageQueue.insert(msg);
+      }
+    } else {
+      messageQueue.insert(msg);
+    }
+  } else {
+    client.publish((module_topic + topic).c_str(), 0, retain, payload.c_str(), 0, false);
+  }
+}
+
+void MqttManager::subscribe(const String& topic) { client.subscribe((module_topic + topic).c_str(), 0); }
+
+void MqttManager::publishInfos() {
+  // publish("version", VERSION, true);
+  // publish("build_timestamp", BUILD_TIMESTAMP, true);
+  publish("wifi", WiFi.SSID(), true, true, 20);
+  publish("ip", WiFi.localIP().toString(), true, true, 40);
+  publish("esp_sdk", ESP.getSdkVersion(), true, true, 20);
+  publish("cpu",
+          String(ESP.getChipModel()) + " rev " + ESP.getChipRevision() + " " + ESP.getChipCores() + "x" +
+              ESP.getCpuFreqMHz() + "MHz",
+          true, true, 20);
+  publish("flash", String(ESP.getFlashChipSize() / 1024 / 1024) + " MiB, Mode: " + ESP.getFlashChipMode(), true, true,
+          20);
+  publish("heap", String(ESP.getHeapSize() / 1024) + " KiB", true, true, 20);
+  publish("psram", String(ESP.getPsramSize() / 1024) + " KiB", true, true, 20);
+  // publish("build_time", unixToTime(CURRENT_TIME), true);
+}
+
+void MqttManager::onConnect(bool session_present) {
+  Serial.println("connected");
+  publish("available", "online", true, true, 100);
+  publish("hostname", String("espcan-") + WifiManager::mac_string(), true, true, 20);
+  publish("module_topic", module_topic, true, true, 20);
+  publishInfos();
+  client.subscribe(mqtt_master_heartbeat_topic, 0);
+  subscribe("+/+/set");
+  subscribe("+/+/reset");
+  subscribe("restart");
+  // subscribe("debug");
+  subscribe("blink");
+}

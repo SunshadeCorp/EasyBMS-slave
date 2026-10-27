@@ -5,7 +5,6 @@
 #include <WiFi.h>
 #include <esp_mac.h>
 #include <lwip/dns.h>
-#include <esp_wifi.h>
 
 #include "debug.hpp"
 
@@ -13,45 +12,38 @@
 #define LED_STATUS = LED_BUILTIN
 #endif
 
-void connect_wifi(String hostname, String ssid, String password) {
+void WifiManager::connect(String hostname, String ssid, String password) {
     Serial.println();
-    Serial.println("connecting to ");
-    Serial.println(ssid);
+    Serial.printf("Connecting to %s.", ssid);
     WiFi.persistent(false);
     WiFi.softAPdisconnect(true);
+    WiFi.setAutoReconnect(true);
     WiFiClass::mode(WIFI_STA);
     WiFiClass::hostname(hostname);
     WiFi.begin(ssid, password);
+    #ifdef LOLIN_C3_MINI_V1
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    #endif
+    const unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED) {
-        delay(100);
+        if (millis() - start >= wifi_timeout_ms) {
+            ESP.restart();
+        }
+        delay(500);
         Serial.print(".");
     }
-    activate_modem_sleep();
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
+    WiFi.setSleep(true);
+    Serial.println("\nWiFi connected!");
+    const String localIP = WiFi.localIP().toString();
+    Serial.printf("IP Address: %s\n", localIP.c_str());
 
-    Serial.println("DNS1: ");
-    Serial.println(IPAddress(dns_getserver(0)));
-    Serial.println("DNS2: ");
-    Serial.println(IPAddress(dns_getserver(1)));
-
-    randomSeed(micros());
-#if SSL_ENABLED
-    espClient.setTrustAnchors(&mqtt_cert_store);
-#endif
+    for (int i = 0; i < 2; i++) {
+        const String dns = WiFi.dnsIP(i).toString();
+        Serial.printf("DNS%d: %s\n", i + 1, dns.c_str());
+    }
 }
 
-void activate_modem_sleep() {
-    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-}
-
-void deactivate_modem_sleep() {
-    esp_wifi_set_ps(WIFI_PS_NONE);
-}
-
-String mac_string() {
+String WifiManager::mac_string() {
     uint8_t mac[6];
     esp_base_mac_addr_get(mac);
     char mac_string[6 * 2 + 1] = {};
@@ -59,11 +51,11 @@ String mac_string() {
     return {mac_string};
 }
 
-String perform_ota_update(String url, const char* cert) {
+String WifiManager::perform_ota_update(String url, const char* cert) {
     NetworkClientSecure client_secure;
     client_secure.setCACert(cert);
     client_secure.setTimeout(12000);
-    deactivate_modem_sleep();
+    WiFi.setSleep(false);
     httpUpdate.setLedPin(LED_STATUS, HIGH);
     auto result = httpUpdate.update(client_secure, String("https://") + url);
     String result_string;
@@ -83,6 +75,28 @@ String perform_ota_update(String url, const char* cert) {
             break;
     }
     DEBUG_PRINTLN(result_string);
-    activate_modem_sleep();
+    WiFi.setSleep(true);
     return result_string;
+}
+
+void WifiManager::syncTime() {
+    Serial.print("Setting time using SNTP.");
+    configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "0.de.pool.ntp.org", "1.de.pool.ntp.org", "2.de.pool.ntp.org");
+    time_t now = time(nullptr);
+    const unsigned long start = millis();
+    while (now < min_time_s && millis() - start < sntp_timeout_ms) {
+        delay(500);
+        Serial.print(".");
+        now = time(nullptr);
+    }
+    if (now < min_time_s) {
+        Serial.println("\nSNTP-Sync timeout!");
+        return;
+    }
+    Serial.println("\nTime synchronized!");
+    tm timeInfo{};
+    getLocalTime(&timeInfo);
+    char current_time_buffer[32];
+    strftime(current_time_buffer, sizeof(current_time_buffer), "%c", &timeInfo);
+    Serial.printf("Current time: %s", current_time_buffer);
 }

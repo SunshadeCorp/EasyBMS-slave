@@ -3,6 +3,16 @@
 #include "battery_type.hpp"
 #include "balance_mode.hpp"
 
+#include <string_view>
+
+// Battery configuration
+#define BATTERY_MODULE_LG_WH 6850
+#define BATTERY_MODULE_CATL_WH 7060
+
+#define LED_ON HIGH
+#define LED_OFF LOW
+
+struct Config {
 /**
  * meb8s:   8s batteries
  * meb12s:  12s batteries
@@ -16,18 +26,47 @@ constexpr BatteryConfig battery_config = BatteryConfig::mebAuto;
  */
 constexpr BalanceMode bms_mode = BalanceMode::single;
 
-constexpr size_t ltc_count = 1;
+// Battery configuration
+#define BATTERY_MODULE_LG_WH 6850
+#define BATTERY_MODULE_CATL_WH 7060
 
-constexpr char ssid[] = "WIFI_SSID";
-constexpr char password[] = "WIFI_PASS";
-constexpr char mqtt_server[] = "mosquitto.local";
+#ifdef LOLIN_C3_MINI
+static constexpr uint8_t can_tx_pin = 10;
+static constexpr uint8_t can_rx_pin = 3;
+#elif defined(LOLIN_S2_MINI)
+static constexpr uint8_t can_tx_pin = 35;
+static constexpr uint8_t can_rx_pin = 9;
+#elif defined(ESP32_C6_DEVKITM_1)
+static constexpr uint8_t can_tx_pin = 23;
+static constexpr uint8_t can_rx_pin = 22;
+#endif
+
+constexpr float max_cell_voltage = 4.1f;
+constexpr float min_cell_voltage = 3.4f;
+constexpr float default_cell_voltage = 3.7f;
+
+constexpr float max_current = 25.f;
+
+constexpr unsigned int battery_cells_per_module = 12;
+constexpr unsigned int battery_modules = 12;
+constexpr unsigned long battery_wh_max = BATTERY_MODULE_CATL_WH * battery_modules;
+
+// WiFi
+constexpr std::string_view ssid = "WIFI_SSID";
+constexpr std::string_view password = "WIFI_PASS";
+
+// MQTT
+constexpr std::string_view mqtt_server = "mosquitto.local";
 constexpr uint16_t mqtt_port = 1883;
-constexpr char mqtt_username[] = "mosquitto_user";
-constexpr char mqtt_password[] = "mosquitto_pass";
+constexpr std::string_view mqtt_username = "mosquitto_user";
+constexpr std::string_view mqtt_password = "mosquitto_pass";
 constexpr bool use_mqtt = false;
 
-constexpr char ota_server[] = "example.com/ota/";
-const char trustRoot[] PROGMEM = R"CERT(
+// OTA
+constexpr std::string_view ota_server = "example.com/ota/";
+
+// ISRG Root X1 from https://letsencrypt.org/de/certificates/
+const std::string_view trustRoot PROGMEM = R"CERT(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
@@ -59,4 +98,6 @@ oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
 mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
 emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----
-)CERT"; // ISRG Root X1 from https://letsencrypt.org/de/certificates/
+)CERT";
+
+};

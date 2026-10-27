@@ -3,27 +3,21 @@
 #include <WString.h>
 
 #include <map>
-
-#include "mqtt_client_interface.hpp"
+#include <functional>
 
 #define SSL_ENABLED false
 
 using MqttCallback = std::function<void(const String&, const String&)>;
 
-class MockMqttClient : public IMqttClient {
+class MockMqttClient {
    public:
     MockMqttClient();
-    bool publish(const String &topic, const char* value) override;
-    bool subscribe(String topic, MqttCallback callback) override;
-    void disconnect() override;
-    bool connected() override;
-    bool connect() override;
-    bool loop() override;
-    void set_password(String password) override;
-    void set_user(String user) override;
-    void set_id(String id) override;
-    void set_will(String topic, uint8_t qos, bool retain, String message) override;
-    String state_string() override;
+    bool publish(const String &topic, const char* value);
+    bool subscribe(const String & topic, MqttCallback callback);
+    void disconnect();
+    bool connected();
+    bool connect();
+    void set_will(const String &topic, uint8_t qos, bool retain, const String &message);
 
     void receive_messagge(String topic, String payload);
 

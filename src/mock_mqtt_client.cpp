@@ -15,25 +15,13 @@ MockMqttClient::MockMqttClient() {
     loop_result = true;
 }
 
-void MockMqttClient::set_password(String password) {
-    this->password = password;
-}
-
-void MockMqttClient::set_user(String user) {
-    this->user = user;
-}
-
-void MockMqttClient::set_id(String id) {
-    this->id = id;
-}
-
 bool MockMqttClient::connect() {
     DEBUG_PRINTLN("MQTT Mock: connect()");
     is_connected = connect_result;
     return connect_result;
 }
 
-void MockMqttClient::set_will(String topic, uint8_t qos, bool retain, String message) {
+void MockMqttClient::set_will(const String &topic, uint8_t qos, bool retain, const String & message) {
     will_topic = topic;
     will_qos = qos;
     will_retain = retain;
@@ -53,14 +41,6 @@ bool MockMqttClient::connected() {
     return is_connected;
 }
 
-bool MockMqttClient::loop() {
-    return loop_result;
-}
-
-String MockMqttClient::state_string() {
-    return state;
-}
-
 void MockMqttClient::receive_messagge(String topic, String payload) {
     DEBUG_PRINTLN("MQTT Mock: receive_message(): " + topic + " (" + payload + ")");
     auto callback_it = mqtt_callbacks.find(topic);
@@ -71,7 +51,7 @@ void MockMqttClient::receive_messagge(String topic, String payload) {
     }
 }
 
-bool MockMqttClient::subscribe(String topic, MqttCallback callback) {
+bool MockMqttClient::subscribe(const String & topic, MqttCallback callback) {
     DEBUG_PRINTLN("MQTT Mock: subscribe(): " + topic);
     mqtt_callbacks[topic] = callback;
     return true;
