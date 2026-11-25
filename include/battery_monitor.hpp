@@ -30,7 +30,7 @@ class BatteryMonitor {
     const std::vector<float>& module_temps() const;
     const std::vector<float>& pcb_temps() const;
     float chip_temp() const;
-    float battery_current() const;
+    float battery_current(float zero_current = 0.0f) const;
     float soc() const;
     uint32_t measure_error_count() const;
     uint32_t balance_error_count() const;

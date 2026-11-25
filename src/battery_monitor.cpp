@@ -1,7 +1,6 @@
 #include "battery_monitor.hpp"
 
 #include <algorithm>
-#include <numeric>
 
 #include "battery_type.hpp"
 #include "soc.hpp"
@@ -146,9 +145,9 @@ float BatteryMonitor::chip_temp() const {
     return _chip_temp;
 }
 
-float BatteryMonitor::battery_current() const {
+float BatteryMonitor::battery_current(float zero_current) const {
     _bat->measure_aux();
-    return (_bat->aux_voltage() - 2.5f) / 0.02f;
+    return ((_bat->aux_voltage() - 2.5f) / 0.02f) - zero_current;
 }
 
 float BatteryMonitor::soc() const {
