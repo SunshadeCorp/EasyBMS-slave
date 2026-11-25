@@ -67,13 +67,14 @@ void MqttAdapter::init(const char *const server, const char *const user,
     if (_bms->mode() == BalanceMode::slave) {
         _mqtt.onTopic("master/uptime", 0,
                     [this](char *topic, char *payload, int, int, bool) {
-            on_mqtt_master_uptime(String(topic), String(payload));
+                        on_mqtt_master_uptime(String(topic), String(payload));
                 });
         _mqtt.onTopic((_mac_topic + "/blink").c_str(), 0,
                     [this](char *topic, char *payload, int, int, bool) {
                         on_mqtt_blink(String(topic), String(payload));
                     });
     }
+    _mqtt.onConnect([this](bool session_present) { on_mqtt_connect(session_present); });
     _mqtt.onTopic((_mac_topic + "/set_config").c_str(), 0,
                   [this](char *topic, char *payload, int, int, bool) {
                       on_mqtt_set_config(String(topic), String(payload));
@@ -90,20 +91,13 @@ void MqttAdapter::init(const char *const server, const char *const user,
 }
 
 void MqttAdapter::loop() {
-    if (!_mqtt.connected()) {
-        if (_last_connection != 0 && millis() - _last_connection >= 30000) {
-            _bms->restart();
-        }
-        _mqtt.connect();
-        return;
+    if (_mqtt.connected()) {
+        publish(_module_topic);
     }
-
-    publish(_module_topic);
-    _last_connection = millis();
 }
 
 void MqttAdapter::on_mqtt_connect(bool session_present) {
-    DEBUG_PRINTLN("connected");
+    DEBUG_PRINTLN("Instance " + String(_index) + " connected");
     publish_value(_module_topic + "/available", "online");
     if (!_module_topic.equals(_mac_topic)) {
         publish_value(_mac_topic + "/available", "undefined");
@@ -133,7 +127,7 @@ void MqttAdapter::reset_balancing(size_t size) {
 std::vector<bool> MqttAdapter::balance(const std::vector<float> &voltages) {
     auto balance_bits = std::vector<bool>(voltages.size(), false);
 
-    if (xSemaphoreTake(_balance_semaphore, 100) == pdFALSE) {
+    if (xSemaphoreTake(_balance_semaphore, portTICK_PERIOD_MS * 100) == pdFALSE) {
         reset_balancing(balance_bits.size());
         return balance_bits;
     }
@@ -221,7 +215,7 @@ void MqttAdapter::on_mqtt_master_uptime(const String &topic_string, const String
 }
 
 void MqttAdapter::on_mqtt_balance_request(const String &topic_string, const String &payload_string) {
-    if (xSemaphoreTake(_balance_semaphore, 100) == pdFALSE) {
+    if (xSemaphoreTake(_balance_semaphore, 0) == pdFALSE) {
         return;
     }
 
@@ -289,8 +283,7 @@ void MqttAdapter::on_mqtt_set_config(const String &topic_string, const String &p
         _bms->set_module_number(module_number);
         _module_topic = "esp-module/" + module_number_string;
         _mqtt.setWill((_module_topic + "/available").c_str(), 0, true, "offline");
-        _mqtt.disconnect();
-        _mqtt.connect();
+        on_mqtt_connect(true);
     }
 }
 
