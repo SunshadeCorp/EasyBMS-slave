@@ -1,5 +1,4 @@
 #include "Arduino.h"
-#include "balancer_interface.hpp"
 #include "battery_monitor.hpp"
 #include "debug.hpp"
 #include "display.hpp"
@@ -64,15 +63,10 @@ void can_loop(void *param);
         bms->set_battery_monitor(battery_monitor);
 
         if constexpr (Config::use_mqtt) {
-            mqtt_adapterArr[i] = std::make_shared<MqttAdapter>(
-            bms, Config::mqtt_server, Config::mqtt_username, Config::mqtt_password, String("easybms-") + WifiManager::mac_string() + "_" + String(i));
+            mqtt_adapterArr[i] = std::make_shared<MqttAdapter>(bms, i);
 
             if (i == 0) {
-                mqtt_adapterArr[i]->set_ota_server(Config::ota_server.data());
-                mqtt_adapterArr[i]->set_ota_cert(Config::trustRoot.data());
-                mqtt_adapterArr[i]->init();
-            } else {
-                mqtt_adapterArr[i]->init(i);
+                mqtt_adapterArr[i]->set_ota_server_cert(Config::ota_server, Config::trustRoot);
             }
         }
 
@@ -104,15 +98,19 @@ void can_loop(void *param);
         i++;
     }
 
+    DEBUG_PRINTLN("Creating BMS loop task");
+
     xTaskCreatePinnedToCore(
-        bms_loop, "BMSLoop", 16384, nullptr, 1, &bmsThreadHandle, 0);
+        bms_loop, "BMSLoop", 16384, nullptr, 5, &bmsThreadHandle, 0);
+
+    DEBUG_PRINTLN("Creating MQTT loop task");
 
     if constexpr (Config::use_mqtt) {
-        WifiManager::connect(String("easybms-") + WifiManager::mac_string(), Config::ssid.data(), Config::password.data());
+        WifiManager::connect(String("easybms-") + WifiManager::mac_string(), Config::ssid, Config::password);
         WifiManager::syncTime();
 
         xTaskCreatePinnedToCore(
-            mqtt_loop, "MQTTLoop", 16384, nullptr, 1, &mqttThreadHandle, 0);
+            mqtt_loop, "MQTTLoop", 65536, nullptr, 5, &mqttThreadHandle, 0);
     }
 
     DEBUG_PRINTLN("Init finished");
@@ -124,22 +122,24 @@ void startCANThread() {
     }
 
     if constexpr (!Config::use_mqtt) {
-        WifiManager::connect(String("easybms-") + WifiManager::mac_string(), Config::ssid.data(), Config::password.data());
+        WifiManager::connect(String("easybms-") + WifiManager::mac_string(), Config::ssid, Config::password);
         WifiManager::syncTime();
     }
 
     xTaskCreatePinnedToCore(
-        can_loop, "CANLoop", 16384, nullptr, 1, &canThreadHandle, 0);
+        can_loop, "CANLoop", 32768, nullptr, 5, &canThreadHandle, 0);
 }
 
 void bms_loop(void *param) {
     static constexpr time_ms LTC_CHECK_INTERVAL = 1000;
-    TickType_t lastWake = pdMS_TO_TICKS(millis());
+    TickType_t lastWake = xTaskGetTickCount();
 
     for(;;) {
-        for (auto &bms : bmsArr)
-            if (bms)
+        for (auto &bms : bmsArr) {
+            if (bms) {
                 bms->loop();
+            }
+        }
 
         xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(LTC_CHECK_INTERVAL));
     }
@@ -147,12 +147,20 @@ void bms_loop(void *param) {
 
 void mqtt_loop(void *param) {
     static constexpr time_ms MQTT_UPDATE_INTERVAL = 1000;
-    TickType_t lastWake = pdMS_TO_TICKS(millis());
+
+    for (auto &mqtt_adapter : mqtt_adapterArr) {
+        if (mqtt_adapter)
+            mqtt_adapter->init(Config::mqtt_server, Config::mqtt_username, Config::mqtt_password);
+    }
+
+    TickType_t lastWake = xTaskGetTickCount();
 
     for(;;) {
-        for (auto &mqtt_adapter : mqtt_adapterArr)
-            if (mqtt_adapter)
+        for (auto &mqtt_adapter : mqtt_adapterArr) {
+            if (mqtt_adapter) {
                 mqtt_adapter->loop();
+            }
+        }
 
         xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(MQTT_UPDATE_INTERVAL));
     }
@@ -160,7 +168,11 @@ void mqtt_loop(void *param) {
 
 void can_loop(void *param) {
     static constexpr time_ms CAN_CHECK_INTERVAL = 100;
-    TickType_t lastWake = pdMS_TO_TICKS(millis());
+
+    MqttManager::init(Config::mqtt_server, Config::mqtt_username, Config::mqtt_password);
+    CanManager::init();
+
+    TickType_t lastWake = xTaskGetTickCount();
 
     for(;;) {
         CanManager::loop();
@@ -170,4 +182,5 @@ void can_loop(void *param) {
 }
 
 void loop() {
+    delay(1000);
 }

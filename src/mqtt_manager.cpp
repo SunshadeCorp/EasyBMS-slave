@@ -1,10 +1,8 @@
 #include "mqtt_manager.h"
 
-#include <HTTPClient.h>
-#include <HTTPUpdate.h>
-
 #include <map>
 #include <set>
+#include <charconv>
 
 #include "can_manager.h"
 #include "wifi.hpp"
@@ -14,33 +12,23 @@ PsychicMqttClient MqttManager::client;
 
 String MqttManager::module_topic = "master/can/";
 String MqttManager::will_topic;
-
+String MqttManager::client_id;
 unsigned long MqttManager::last_blink_time = 0;
 unsigned long MqttManager::last_master_heartbeat_time = 0;
 
-struct QueuedMessage {
-  String topic;
-  String payload;
-  bool retain;
-  int priority;
-};
+void MqttManager::init(const char *const server, const char *const user,
+                       const char *const password)
+{
+  client_id = String("espcan-") + WifiManager::mac_string();
 
-struct MessageComparator {
-  bool operator()(const QueuedMessage& a, const QueuedMessage& b) const {
-    return a.priority > b.priority;  // high priority first
-  }
-};
-
-static std::multiset<QueuedMessage, MessageComparator> messageQueue;
-
-void MqttManager::init(const std::string_view &server, const std::string_view &user,
-                       const std::string_view &password) {
   if (module_topic.length() <= 0) {
-    module_topic = String("espcan-") + WifiManager::mac_string() + "/";
+    module_topic = client_id + "/";
   }
-  client.setServer(server.data());
-  client.setCredentials(user.data(), password.data());
+
+  client.setServer(server);
+  client.setCredentials(user, password);
   will_topic = module_topic + "available";
+  client.setClientId(client_id.c_str());
   client.setWill(will_topic.c_str(), 0, true, "offline");
   client.setKeepAlive(60);
   client.onConnect(onConnect);
@@ -58,13 +46,6 @@ void MqttManager::loop() {
     log("master heartbeat timeout - restarting!", false);
     ESP.restart();
   }
-  if (!client.connected() || messageQueue.empty()) {
-    return;
-  }
-  const auto it = messageQueue.begin();
-  const QueuedMessage& msg = *it;  // highest priority message
-  client.publish(msg.topic.c_str(), 0, msg.retain, msg.payload.c_str(), 0, false);
-  messageQueue.erase(it);
 }
 
 void MqttManager::onMessage(char* topic, char* payload, int retain, int qos, bool dup) {
@@ -86,9 +67,8 @@ void MqttManager::onMessage(char* topic, char* payload, int retain, int qos, boo
   }
   const bool isSet = sTopic.endsWith("/set");
   const bool isReset = sTopic.endsWith("/reset");
-  char* endPtr;
-  const float value = strtof(payload, &endPtr);
-  if (isSet && *endPtr != '\0') {
+  float value;
+  if (isSet && (std::from_chars(payload, payload + strlen(payload), value).ec != std::errc())) {
     log(String("failed to parse ") + payload + " of topic " + sTopic + ".");
     return;
   }
@@ -125,45 +105,33 @@ void MqttManager::publish(const String& topic, const uint32_t value, const bool 
 
 void MqttManager::publish(const String& topic, const String& payload, const bool retain, const bool async,
                           const int priority) {
-  if (async) {
-    const QueuedMessage msg{module_topic + topic, payload, retain, priority};
-    if (messageQueue.size() >= max_mqtt_send_queue) {
-      if (const auto it = --messageQueue.end(); priority > it->priority) {
-        messageQueue.erase(it);  // delete lowest priority message
-        messageQueue.insert(msg);
-      }
-    } else {
-      messageQueue.insert(msg);
-    }
-  } else {
-    client.publish((module_topic + topic).c_str(), 0, retain, payload.c_str(), 0, false);
-  }
+    client.publish((module_topic + topic).c_str(), 0, retain, payload.c_str(), 0, async);
 }
 
 void MqttManager::subscribe(const String& topic) { client.subscribe((module_topic + topic).c_str(), 0); }
 
 void MqttManager::publishInfos() {
-  // publish("version", VERSION, true);
-  // publish("build_timestamp", BUILD_TIMESTAMP, true);
-  publish("wifi", WiFi.SSID(), true, true, 20);
-  publish("ip", WiFi.localIP().toString(), true, true, 40);
-  publish("esp_sdk", ESP.getSdkVersion(), true, true, 20);
+  // publish("version", VERSION, true, false);
+  // publish("build_timestamp", BUILD_TIMESTAMP, true, false);
+  publish("wifi", WiFi.SSID(), true, false, 20);
+  publish("ip", WiFi.localIP().toString(), true, false, 40);
+  publish("esp_sdk", ESP.getSdkVersion(), true, false, 20);
   publish("cpu",
           String(ESP.getChipModel()) + " rev " + ESP.getChipRevision() + " " + ESP.getChipCores() + "x" +
               ESP.getCpuFreqMHz() + "MHz",
-          true, true, 20);
-  publish("flash", String(ESP.getFlashChipSize() / 1024 / 1024) + " MiB, Mode: " + ESP.getFlashChipMode(), true, true,
+          true, false, 20);
+  publish("flash", String(ESP.getFlashChipSize() / 1024 / 1024) + " MiB, Mode: " + ESP.getFlashChipMode(), true, false,
           20);
-  publish("heap", String(ESP.getHeapSize() / 1024) + " KiB", true, true, 20);
-  publish("psram", String(ESP.getPsramSize() / 1024) + " KiB", true, true, 20);
-  // publish("build_time", unixToTime(CURRENT_TIME), true);
+  publish("heap", String(ESP.getHeapSize() / 1024) + " KiB", true, false, 20);
+  publish("psram", String(ESP.getPsramSize() / 1024) + " KiB", true, false, 20);
+  // publish("build_time", unixToTime(CURRENT_TIME), true, false);
 }
 
 void MqttManager::onConnect(bool session_present) {
   Serial.println("connected");
-  publish("available", "online", true, true, 100);
-  publish("hostname", String("espcan-") + WifiManager::mac_string(), true, true, 20);
-  publish("module_topic", module_topic, true, true, 20);
+  publish("available", "online", true, false, 100);
+  publish("hostname", client_id, true, false, 20);
+  publish("module_topic", module_topic, true, false, 20);
   publishInfos();
   client.subscribe(mqtt_master_heartbeat_topic, 0);
   subscribe("+/+/set");

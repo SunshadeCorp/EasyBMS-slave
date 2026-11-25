@@ -3,12 +3,10 @@
 #include <Arduino.h>
 #include <PsychicMqttClient.h>
 
-#include <string_view>
-
 class MqttManager {
  public:
-  static void init(const std::string_view &server, const std::string_view &user,
-                   const std::string_view &password);
+  static void init(const char *const server, const char *const user,
+                   const char *const password);
   static void loop();
   static void log(const String& line, bool async = true, int priority = 10);
   static void publish(const String& topic, float value, bool retain = false, bool async = true, int priority = 0);
@@ -25,8 +23,7 @@ class MqttManager {
   static constexpr unsigned long heartbeat_timeout_limits_ms = 2UL * 60UL * 1000UL;
   static constexpr unsigned long heartbeat_timeout_reboot_ms = 10UL * 60UL * 1000UL;
   static PsychicMqttClient client;
-  static String module_topic;
-  static String will_topic;
+  static String module_topic, will_topic, client_id;
   static unsigned long last_blink_time;
   static void onConnect(bool session_present);
   static void onMessage(char* topic, char* payload, int retain, int qos, bool dup);

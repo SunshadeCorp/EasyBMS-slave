@@ -1,7 +1,7 @@
 #include "mqtt_adapter.hpp"
 
-#include <algorithm>
 #include <bitset>
+#include <charconv>
 #include <WiFi.h>
 
 #include "debug.hpp"
@@ -11,40 +11,28 @@
 
 extern void startCANThread();
 
-MqttAdapter::MqttAdapter(const std::shared_ptr<BMS> &bms, const std::string_view &server, const std::string_view &user,
-                         const std::string_view &password, const String &client_id) :
+MqttAdapter::MqttAdapter(const std::shared_ptr<BMS> &bms, int index) :
     _bms(bms),
     _mqtt(),
-    _last_connection{0},
-    _hostname(),
-    _mac_topic(),
-    _module_topic(),
     _last_master_uptime{0},
-    _balance_semaphore{nullptr},
     _balance_start_time{},
     _balance_duration{},
     _ota_cert{nullptr},
     _ota_server(),
     _current_measurement{false},
-    _index{0}
+    _index{index},
+    _zero_current{0.0f}
 {
-    _balance_semaphore = xSemaphoreCreateMutex();
-    _mqtt.setServer(server.data());
-    _mqtt.setCredentials(user.data(), password.data());
-    _mqtt.setClientId(client_id.c_str());
-    _mqtt.setKeepAlive(60);
-    _mqtt.onConnect([this](bool session_present) { on_mqtt_connect(session_present); });
-}
-
-bool MqttAdapter::is_uint(const String &number_string) const {
-    return !number_string.isEmpty() && std::all_of(number_string.begin(), number_string.end(), isDigit);
-}
-
-int MqttAdapter::cell_id_from_name(const String &cell_name) const {
-    if (!is_uint(cell_name)) {
-        return -1;
+    if (_index == 0) {
+        _mac_topic = String("esp-module/") + WifiManager::mac_string();
+    } else {
+        _mac_topic = String("esp-module/") + WifiManager::mac_string() + "_" + String(_index);
     }
-    return cell_name.toInt() - 1;
+
+    _module_topic = _mac_topic;
+    _balance_semaphore = xSemaphoreCreateMutex();
+    _client_id = String("easybms-") + WifiManager::mac_string() + "_" + String(_index);
+    _mqtt.setClientId(_client_id.c_str());
 }
 
 String MqttAdapter::cpu_description() const {
@@ -56,23 +44,29 @@ String MqttAdapter::flash_description() const {
     return String(ESP.getFlashChipSize() / 1024 / 1024) + " MiB, Mode: " + ESP.getFlashChipMode();
 }
 
-void MqttAdapter::init() {
-    init(0);
-}
+void MqttAdapter::init(const char *const server, const char *const user,
+                       const char *const password) {
+    _mqtt.setServer(server);
+    _mqtt.setCredentials(user, password);
+    _mqtt.setKeepAlive(60);
+    _will_topic = _module_topic + "/available";
+    _mqtt.setWill(_will_topic.c_str(), 0, true, "offline");
 
-void MqttAdapter::init(int index) {
-    if (index == 0) {
-        _mac_topic = String("esp-module/") + WifiManager::mac_string();
-    } else {
-        _mac_topic = String("esp-module/") + WifiManager::mac_string() + "_" + String(index);
-        _index = index;
+#if LTC_COUNT > 1
+    if (_index == 0) {
+        float zero_current = 0.0f;
+
+        for (int i = 0; i < 100; i++) {
+            zero_current += _bms->battery_monitor()->battery_current();
+        }
+
+        _zero_current = zero_current / 100.0f;
     }
-
-    _module_topic = _mac_topic;
-    _mqtt.setWill((_module_topic + "/available").c_str(), 0, true, "offline");
+#endif
 
     if (_bms->mode() == BalanceMode::slave) {
-        _mqtt.onTopic("master/uptime", 0, [this](char *topic, char *payload, int, int, bool) {
+        _mqtt.onTopic("master/uptime", 0,
+                    [this](char *topic, char *payload, int, int, bool) {
             on_mqtt_master_uptime(String(topic), String(payload));
                 });
         _mqtt.onTopic((_mac_topic + "/blink").c_str(), 0,
@@ -93,13 +87,6 @@ void MqttAdapter::init(int index) {
                       on_mqtt_ota(String(topic), String(payload));
                   });
     _mqtt.connect();
-}
-
-void MqttAdapter::reconnect() {
-    if (!_mqtt.connected()) {
-        DEBUG_PRINT("Attempting MQTT connection...");
-        _mqtt.connect();
-    }
 }
 
 void MqttAdapter::loop() {
@@ -182,8 +169,7 @@ void MqttAdapter::publish(const String &topic) {
         return;
     }
 
-    size_t index = 0;
-    for (const auto &voltage : monitor->cell_voltages()) {
+    for (size_t index = 0; const auto &voltage : monitor->cell_voltages()) {
         String cell_name = String(index + 1);
         publish_value(topic + "/cell/" + cell_name + "/voltage", String(voltage, 3));
         publish_value(topic + "/cell/" + cell_name + "/is_balancing", balance_bits[index] ? "1" : "0");
@@ -206,17 +192,13 @@ void MqttAdapter::publish(const String &topic) {
 #if LTC_COUNT > 1
     if (Config::bms_mode == BalanceMode::slave) {
         if (_current_measurement && (_index == 0)) {
-            publish_value("esp-total/total_current", monitor->battery_current());
+            publish_value("esp-total/total_current", monitor->battery_current(_zero_current));
             publish_value("esp-total/total_voltage", 4 * monitor->module_voltage()); // TODO: This is a hack, we should get the total voltage from the master instead of calculating it here
         }
     } else if (_index == 0) {
-        publish_value(topic + "/battery_current", monitor->battery_current());
+        publish_value(topic + "/battery_current", monitor->battery_current(_zero_current));
     }
 #endif
-}
-
-String MqttAdapter::module_topic() const {
-    return _module_topic;
 }
 
 void MqttAdapter::on_mqtt_master_uptime(const String &topic_string, const String &payload_string) {
@@ -224,7 +206,12 @@ void MqttAdapter::on_mqtt_master_uptime(const String &topic_string, const String
     DEBUG_PRINTLN(payload_string);
 
     _bms->flip_led();
-    unsigned long long uptime_u_long = std::stoull(payload_string.c_str());
+    unsigned long long uptime_u_long;
+    if (std::from_chars(payload_string.c_str(), payload_string.end(), uptime_u_long).ec != std::errc()) {
+        DEBUG_PRINTLN("Failed to parse master uptime");
+        return;
+    }
+
     if (uptime_u_long - _last_master_uptime > MASTER_TIMEOUT) {
         DEBUG_PRINTLN(uptime_u_long);
         DEBUG_PRINTLN(_last_master_uptime);
@@ -238,18 +225,20 @@ void MqttAdapter::on_mqtt_balance_request(const String &topic_string, const Stri
         return;
     }
 
-    String cell_name = topic_string.substring((_module_topic + "/cell/").length());
-    cell_name = cell_name.substring(0, cell_name.indexOf("/"));
-    int cell_id = cell_id_from_name(cell_name);
-    if (cell_id == -1 || static_cast<size_t>(cell_id) >= _balance_duration.size()) {
-        DEBUG_PRINTLN("MQTT: Got invalid cell name for balancing: " + cell_name);
+    String expected_prefix = _module_topic + "/cell/";
+    String cell_name = topic_string.substring(expected_prefix.length(), topic_string.indexOf("/", expected_prefix.length()));
+    unsigned int cell_id;
+    if (std::from_chars(cell_name.c_str(), cell_name.end(), cell_id).ec != std::errc()) {
+        DEBUG_PRINTLN("MQTT: Failed to parse cell ID from name: " + cell_name);
         xSemaphoreGive(_balance_semaphore);
         return;
     }
 
-    time_ms balance_time = payload_string.toInt();
-    if (balance_time > 1000 * 60 * 5) {
-        DEBUG_PRINTLN("MQTT: Balance time too long (> 5 mins): " + String(balance_time) + "ms");
+    cell_id = static_cast<unsigned>(cell_id - 1) > _balance_start_time.size() ? _balance_start_time.size() - 1 : cell_id - 1;
+
+    time_ms balance_time;
+    if (std::from_chars(payload_string.c_str(), payload_string.end(), balance_time).ec != std::errc()) {
+        DEBUG_PRINTLN("MQTT: Failed to parse balance time: " + payload_string);
         xSemaphoreGive(_balance_semaphore);
         return;
     }
@@ -295,8 +284,8 @@ void MqttAdapter::on_mqtt_set_config(const String &topic_string, const String &p
         startCANThread();
     }
 
-    if (is_uint(module_number_string)) {
-        uint8_t module_number = module_number_string.toInt();
+    uint8_t module_number;
+    if (std::from_chars(module_number_string.c_str(), module_number_string.end(), module_number).ec == std::errc()) {
         _bms->set_module_number(module_number);
         _module_topic = "esp-module/" + module_number_string;
         _mqtt.setWill((_module_topic + "/available").c_str(), 0, true, "offline");
@@ -305,22 +294,19 @@ void MqttAdapter::on_mqtt_set_config(const String &topic_string, const String &p
     }
 }
 
-void MqttAdapter::set_ota_server(String ota_server) {
+void MqttAdapter::set_ota_server_cert(const char *const ota_server, const char *const cert) {
     _ota_server = ota_server;
-}
-
-void MqttAdapter::set_ota_cert(std::string_view cert) {
     _ota_cert = cert;
 }
 
 void MqttAdapter::on_mqtt_ota(const String &topic_string, const String &payload_string) {
-    if (_ota_cert == nullptr || _ota_server.isEmpty()) {
+    if (_ota_cert == nullptr || _ota_server == nullptr) {
         publish_value(_mac_topic + "/ota_start", "ota error [no cert or server set]");
         return;
     }
 
     publish_value(_mac_topic + "/ota_start", "ota started [" + payload_string + "] (" + String(millis()) + ")");
-    publish_value(_mac_topic + "/ota_url", "https://" + _ota_server + payload_string);
-    String ota_result = WifiManager::perform_ota_update(_ota_server + payload_string, _ota_cert.data());
+    publish_value(_mac_topic + "/ota_url", String("https://") + _ota_server + payload_string);
+    String ota_result = WifiManager::perform_ota_update(_ota_server + payload_string, _ota_cert);
     publish_value(_mac_topic + "/ota_ret", ota_result);
 }

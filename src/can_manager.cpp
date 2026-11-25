@@ -128,10 +128,10 @@ void CanManager::sendLimits() {
   setBytes(message.data, 4, static_cast<uint16_t>(limit_discharge * 10.f));            // 25,6A max discharge
   setBytes(message.data, 6, static_cast<uint16_t>(limit_charge * 10.f));               // 25,6A max charge
   if (send(message)) {
-    MqttManager::publish("limits/max_voltage", limit_battery_voltage_max);
-    MqttManager::publish("limits/min_voltage", limit_battery_voltage_min);
-    MqttManager::publish("limits/max_discharge_current", limit_discharge);
-    MqttManager::publish("limits/max_charge_current", limit_charge);
+    MqttManager::publish("limits/max_voltage", limit_battery_voltage_max, false, false);
+    MqttManager::publish("limits/min_voltage", limit_battery_voltage_min, false, false);
+    MqttManager::publish("limits/max_discharge_current", limit_discharge, false, false);
+    MqttManager::publish("limits/max_charge_current", limit_charge, false, false);
   }
 }
 
@@ -144,9 +144,9 @@ void CanManager::sendBatteryInfo() {
   setBytes(message.data, 4, static_cast<int16_t>(battery_temp * 10.f));     // 22°C battery temp
   setBytes(message.data, 6, static_cast<int16_t>(776));                     // some sort of status bytes?
   if (send(message)) {
-    MqttManager::publish("battery/voltage", battery_voltage);
-    MqttManager::publish("battery/current", battery_current);
-    MqttManager::publish("battery/temp", battery_temp);
+    MqttManager::publish("battery/voltage", battery_voltage, false, false);
+    MqttManager::publish("battery/current", battery_current, false, false);
+    MqttManager::publish("battery/temp", battery_temp, false, false);
   }
 }
 
@@ -157,8 +157,8 @@ void CanManager::sendCellInfo() {
   setBytes(message.data, 0, static_cast<uint16_t>(cell_temp_max * 10.f));  // 23°C max cell temp
   setBytes(message.data, 2, static_cast<uint16_t>(cell_temp_min * 10.f));  // 22°C min cell temp
   if (send(message)) { // sungrow not checking data?
-    MqttManager::publish("battery/max_cell_temp", cell_temp_max);
-    MqttManager::publish("battery/min_cell_temp", cell_temp_min);
+    MqttManager::publish("battery/max_cell_temp", cell_temp_max, false, false);
+    MqttManager::publish("battery/min_cell_temp", cell_temp_min, false, false);
   }
 }
 
@@ -172,10 +172,10 @@ void CanManager::sendStates() {
   setBytes(message.data, 4, static_cast<uint16_t>(remaining_capacity_ah * 10.f));  // remaining capacity 1/10Ah (ignored by sungrow?)
   setBytes(message.data, 6, static_cast<uint16_t>(full_capacity_ah * 10.f));       // fully charged capacity 1/10Ah (ignored by sungrow?)
   if (send(message)) {
-    MqttManager::publish("battery/soc", soc_percent);
-    MqttManager::publish("battery/soh", soh_percent);
-    MqttManager::publish("battery/remaining_capacity_ah", remaining_capacity_ah);
-    MqttManager::publish("battery/full_capacity_ah", full_capacity_ah);
+    MqttManager::publish("battery/soc", soc_percent, false, false);
+    MqttManager::publish("battery/soh", soh_percent, false, false);
+    MqttManager::publish("battery/remaining_capacity_ah", remaining_capacity_ah, false, false);
+    MqttManager::publish("battery/full_capacity_ah", full_capacity_ah, false, false);
   }
 }
 
@@ -229,19 +229,19 @@ void CanManager::readMessage(const CanMsg& message) {
     const auto wr_battery_voltage = getValue<uint16_t>(rxBuf, 0);
     const auto wr_battery_current = getValue<uint16_t>(rxBuf, 2); // int16_t ?
     const auto wr_temperature = getValue<uint16_t>(rxBuf, 4);
-    MqttManager::publish("inverter/battery_voltage", static_cast<float>(wr_battery_voltage) * 0.1f);
-    MqttManager::publish("inverter/battery_current", static_cast<float>(wr_battery_current) * 0.1f);
-    MqttManager::publish("inverter/temperature", static_cast<float>(wr_temperature) * 0.1f);
+    MqttManager::publish("inverter/battery_voltage", static_cast<float>(wr_battery_voltage) * 0.1f, false, false);
+    MqttManager::publish("inverter/battery_current", static_cast<float>(wr_battery_current) * 0.1f, false, false);
+    MqttManager::publish("inverter/temperature", static_cast<float>(wr_temperature) * 0.1f, false, false);
   } else if (rxId == 0xd1) {
     const auto wr_soc = getValue<uint16_t>(rxBuf, 0);
-    MqttManager::publish("inverter/soc", static_cast<float>(wr_soc) * 0.1f);
+    MqttManager::publish("inverter/soc", static_cast<float>(wr_soc) * 0.1f, false, false);
   } else if (rxId == 0x111) {
     const auto wr_timestamp = getValue<uint32_t>(rxBuf, 0);
-    MqttManager::publish("inverter/timestamp", wr_timestamp);
+    MqttManager::publish("inverter/timestamp", wr_timestamp, false, false);
   } else if (rxId == 0x151 && rxBuf[0] == 0x0) {
     rxBuf[len] = '\0';
     if (const auto inverter_name = String(reinterpret_cast<char*>(rxBuf + 1)); inverter_name.length() > 0) {
-      MqttManager::publish("inverter/type", String(reinterpret_cast<char*>(rxBuf + 1)), true);
+      MqttManager::publish("inverter/type", String(reinterpret_cast<char*>(rxBuf + 1)), true, false);
     }
   } else if (rxId == 0x151 && rxBuf[0] == 0x1) {
     MqttManager::log("sending initMessages!");

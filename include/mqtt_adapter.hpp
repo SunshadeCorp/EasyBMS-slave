@@ -4,13 +4,11 @@
 #include <WString.h>
 
 #include <memory>
-#include <string_view>
 #include <vector>
 
 #include "balancer_interface.hpp"
 #include "bms.hpp"
 
-#include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
 class BMS;
@@ -19,34 +17,28 @@ using time_ms = unsigned long;
 
 class MqttAdapter : public IBalancer {
    public:
-    MqttAdapter(const std::shared_ptr<BMS> &bms, const std::string_view &server, const std::string_view &user,
-                const std::string_view &password, const String &client_id);
+    MqttAdapter(const std::shared_ptr<BMS> &bms, int index = 0);
 
-    void init();
-    void init(int index);
-    void reconnect();
+    void init(const char *const server, const char *const user,
+              const char *const password);
     void loop();
     std::vector<bool> balance(const std::vector<float> &voltages) override;
-    void set_ota_server(String ota_server);
-    void set_ota_cert(std::string_view cert);
-    String module_topic() const;
+    void set_ota_server_cert(const char *const ota_server, const char *const cert);
 
    private:
     std::shared_ptr<BMS> _bms;
     PsychicMqttClient _mqtt;
     static constexpr time_ms MASTER_TIMEOUT = 5000;
-    time_ms _last_connection;
-    String _hostname;
-    String _mac_topic;
-    String _module_topic;
+    String _mac_topic, _module_topic, _will_topic, _client_id;
     time_ms _last_master_uptime;
     SemaphoreHandle_t _balance_semaphore;
     std::vector<time_ms> _balance_start_time;
     std::vector<time_ms> _balance_duration;
-    std::string_view _ota_cert;
-    String _ota_server;
+    const char *_ota_cert;
+    const char *_ota_server;
     bool _current_measurement;
     int _index;
+    float _zero_current;
 
     void on_mqtt_connect(bool session_present);
     void on_mqtt_master_uptime(const String &topic_string, const String &payload_string);
@@ -55,8 +47,6 @@ class MqttAdapter : public IBalancer {
     void on_mqtt_restart(const String &topic_string, const String &payload_string);
     void on_mqtt_set_config(const String &topic_string, const String &payload_string);
     void on_mqtt_ota(const String &topic_string, const String &payload_string);
-    bool is_uint(const String &number_string) const;
-    int cell_id_from_name(const String &cell_name) const;
     String cpu_description() const;
     String flash_description() const;
     void reset_balancing(size_t size);

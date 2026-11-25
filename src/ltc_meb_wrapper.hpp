@@ -2,8 +2,6 @@
 
 #include <LTC68041.h>
 
-#include <vector>
-#include <bitset>
 #include <atomic>
 
 #include "battery_interface.hpp"
