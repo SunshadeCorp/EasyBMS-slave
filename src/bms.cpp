@@ -5,7 +5,11 @@
 #define RED 255,0,0
 #define GREEN 0,255,0
 #define BLUE 0,0,255
+#define YELLOW 255,255,0
 #define ORANGE 255,127,0
+#define PURPLE 127,0,255
+#define CYAN 0,255,255
+#define WHITE 255,255,255
 #define OFF 0,0,0
 
 
@@ -36,11 +40,23 @@ void BMS::blink() {
 void BMS::flip_led() {
     _led_builtin_state = !_led_builtin_state;
     digitalWrite(LED_STATUS, _led_builtin_state ? LOW : HIGH);
+
+    if(_led_builtin_state) {
+        rgbLedWrite(LED_DATA_RGB, YELLOW);
+    } else {
+        rgbLedWrite(LED_DATA_RGB, OFF);
+    }
 }
 
 void BMS::set_led(bool led_state) {
     _led_builtin_state = led_state;
     digitalWrite(LED_STATUS, _led_builtin_state ? LOW : HIGH);
+
+    if(_led_builtin_state) {
+        rgbLedWrite(LED_DATA_RGB, YELLOW);
+    } else {
+        rgbLedWrite(LED_DATA_RGB, OFF);
+    }
 }
 
 void BMS::set_module_number(uint8_t module_number) {
