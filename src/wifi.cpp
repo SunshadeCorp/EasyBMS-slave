@@ -51,7 +51,7 @@ String WifiManager::mac_string() {
     return {mac_string};
 }
 
-String WifiManager::perform_ota_update(String url, const char* cert) {
+String WifiManager::perform_ota_update(const String& url, const char* cert) {
     NetworkClientSecure client_secure;
     client_secure.setCACert(cert);
     client_secure.setTimeout(12000);

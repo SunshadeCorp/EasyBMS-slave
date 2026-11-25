@@ -3,7 +3,7 @@
 #include <WString.h>
 #include <IPAddress.h>
 
-String perform_ota_update(String url, const char* cert);
+
 class WifiManager {
  public:
   static void connect(String hostname, String ssid, String password);
@@ -11,7 +11,7 @@ class WifiManager {
   static void activate_modem_sleep();
   static void deactivate_modem_sleep();
   static String mac_string();
-  static String perform_ota_update(String url, const char* cert);
+  static String perform_ota_update(const String& url, const char* cert);
 
  private:
    static constexpr unsigned long sntp_timeout_ms = 10UL * 1000UL;
