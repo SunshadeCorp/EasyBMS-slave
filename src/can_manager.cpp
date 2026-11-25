@@ -3,8 +3,6 @@
 
 #include <cstring>
 
-ESP32_TWAI CanManager::can_bus{0, static_cast<gpio_num_t>(Config::can_tx_pin), static_cast<gpio_num_t>(Config::can_rx_pin)};
-
 float CanManager::number_of_cells = static_cast<float>(Config::battery_modules * Config::battery_cells_per_module);
 
 float CanManager::limit_battery_voltage_max;
@@ -70,7 +68,7 @@ void CanManager::init() {
   for (auto& [key, value] : value_map) {
     *value.valuePtr = value.defaultValue;
   }
-  init_failed = !can_bus.begin(CanBitRate::BR_500k);
+  init_failed = !CAN.begin(CanBitRate::BR_500k, static_cast<gpio_num_t>(Config::can_tx_pin), static_cast<gpio_num_t>(Config::can_rx_pin));
   const unsigned long now = millis();
   last_send_2s = now;
   last_send_10s = now + 333UL;
@@ -79,7 +77,7 @@ void CanManager::init() {
 
 bool CanManager::send(const CanMsg& message) {
   digitalWrite(LED_BUILTIN, LED_ON);
-  bool send_successful = can_bus.write(message) > 0;
+  bool send_successful = CAN.write(message) > 0;
   digitalWrite(LED_BUILTIN, LED_OFF);
   if (send_successful) {
     last_successful_send = millis();
@@ -95,8 +93,8 @@ void CanManager::loop() {
     }
     return;
   }
-  while (can_bus.available() > 0) {
-    readMessage(can_bus.read());
+  while (CAN.available() > 0) {
+    readMessage(CAN.read());
   }
   if (millis() - last_send_2s >= 2UL * 1000UL) {
     last_send_2s = millis();

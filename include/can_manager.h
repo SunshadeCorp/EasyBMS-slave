@@ -49,7 +49,6 @@ class CanManager {
     byte data[8];
   };
 
-  static ESP32_TWAI can_bus;
   static constexpr unsigned long heartbeat_timeout_limits_ms = 2UL * 60UL * 1000UL;
   static constexpr uint8_t fw_major_version = 0x03;
   static constexpr uint8_t fw_minor_version = 0x16;
